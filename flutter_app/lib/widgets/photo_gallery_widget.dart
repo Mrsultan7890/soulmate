@@ -86,7 +86,7 @@ class _PhotoGalleryWidgetState extends State<PhotoGalleryWidget> {
                   decoration: BoxDecoration(
                     color: AppTheme.primaryColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppTheme.primaryColor, style: BorderStyle.dashed),
+                    border: Border.all(color: AppTheme.primaryColor, width: 2),
                   ),
                   child: Center(
                     child: Column(

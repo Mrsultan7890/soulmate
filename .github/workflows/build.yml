@@ -95,7 +95,7 @@ jobs:
           path: flutter_app/build/ios/iphoneos/heartlink.ipa
 
   release:
-    needs: [build-android, build-ios]
+    needs: [build-android]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     
@@ -110,18 +110,12 @@ jobs:
         with:
           name: heartlink-android-bundle
 
-      - name: Download iOS IPA
-        uses: actions/download-artifact@v4
-        with:
-          name: heartlink-ios-ipa
-
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
             app-release.apk
             app-release.aab
-            heartlink.ipa
           draft: false
           prerelease: false
         env:

@@ -4,7 +4,6 @@ import 'package:flutter_card_swiper/flutter_card_swiper.dart';
 import '../../services/auth_service.dart';
 import '../../services/user_service.dart';
 import '../../services/match_service.dart';
-import '../../models/user.dart';
 import '../../utils/theme.dart';
 import '../../widgets/user_card.dart';
 import '../../widgets/match_dialog.dart';
@@ -36,33 +35,34 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     }
   }
 
-  Future<void> _handleSwipe(int index, CardSwiperDirection direction) async {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final userService = Provider.of<UserService>(context, listen: false);
-    final matchService = Provider.of<MatchService>(context, listen: false);
+  bool _handleSwipe(int index, int? previousIndex, CardSwiperDirection direction) {
+    if (index >= Provider.of<UserService>(context, listen: false).discoverUsers.length) return false;
 
-    if (index >= userService.discoverUsers.length) return;
-
-    final swipedUser = userService.discoverUsers[index];
+    final swipedUser = Provider.of<UserService>(context, listen: false).discoverUsers[index];
     final isLike = direction == CardSwiperDirection.right;
 
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final matchService = Provider.of<MatchService>(context, listen: false);
+
     if (authService.token != null) {
-      final result = await matchService.swipe(
+      matchService.swipe(
         token: authService.token!,
         swipedUserId: swipedUser.id,
         isLike: isLike,
-      );
-
-      if (result != null && result['is_match'] == true && mounted) {
-        await matchService.fetchMatches(authService.token!);
-        if (matchService.matches.isNotEmpty) {
-          showDialog(
-            context: context,
-            builder: (context) => MatchDialog(match: matchService.matches.first),
-          );
+      ).then((result) {
+        if (result != null && result['is_match'] == true && mounted) {
+          matchService.fetchMatches(authService.token!).then((_) {
+            if (matchService.matches.isNotEmpty && mounted) {
+              showDialog(
+                context: context,
+                builder: (context) => MatchDialog(match: matchService.matches.first),
+              );
+            }
+          });
         }
-      }
+      });
     }
+    return true;
   }
 
   @override

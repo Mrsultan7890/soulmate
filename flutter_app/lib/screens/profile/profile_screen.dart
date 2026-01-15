@@ -6,7 +6,6 @@ import '../../widgets/photo_gallery_widget.dart';
 import '../../widgets/privacy_settings_widget.dart';
 import 'edit_profile_screen.dart';
 import '../settings/settings_screen.dart';
-import '../settings/settings_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
