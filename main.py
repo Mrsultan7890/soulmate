@@ -1,0 +1,61 @@
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+import uvicorn
+
+from routes import auth, users, matches, chat, safety
+from config.database import init_db
+from config.settings import settings
+
+# Initialize FastAPI app
+app = FastAPI(
+    title="HeartLink API",
+    description="Dating App Backend with Turso DB & Telegram Integration",
+    version="1.0.0"
+)
+
+# CORS middleware for Flutter app
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:*",
+        "http://127.0.0.1:*",
+        "https://your-production-domain.com",  # Add your production domain
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include routers
+app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(users.router, prefix="/api/users", tags=["Users"])
+app.include_router(matches.router, prefix="/api/matches", tags=["Matches"])
+app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
+app.include_router(safety.router, prefix="/api/safety", tags=["Safety"])
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database on startup"""
+    await init_db()
+    print("🚀 HeartLink API Started!")
+
+@app.get("/")
+async def root():
+    return {
+        "message": "💕 HeartLink API",
+        "version": "1.0.0",
+        "status": "active"
+    }
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "service": "heartlink-api"}
+
+if __name__ == "__main__":
+    uvicorn.run(
+        "main:app",
+        host=settings.HOST,
+        port=settings.PORT,
+        reload=settings.DEBUG
+    )

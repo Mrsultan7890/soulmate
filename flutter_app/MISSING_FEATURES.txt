@@ -1,0 +1,21 @@
+Backend Endpoints vs Frontend Implementation:
+
+MISSING IN FRONTEND:
+1. Photo Privacy Toggle - PUT /api/users/photo-privacy
+2. Relationship Intent Update - PUT /api/users/relationship-intent  
+3. Unread Message Count - GET /api/chat/{match_id}/unread-count
+4. User Safety Check - GET /api/safety/user-safety/{user_id}
+
+PARTIALLY IMPLEMENTED:
+1. Image Upload - Works but no UI to show uploaded images
+2. Image Delete - Backend ready but no delete button in UI
+3. Location Update - Helper exists but not integrated in profile
+4. Interests Update - Works but could be better
+
+NEED TO ADD:
+1. Show uploaded images in profile
+2. Delete image button
+3. Location permission request on app start
+4. Unread message badges
+5. Safety indicators on user profiles
+6. Photo privacy settings toggle

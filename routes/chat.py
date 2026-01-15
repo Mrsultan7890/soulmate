@@ -1,0 +1,219 @@
+from fastapi import APIRouter, Depends, HTTPException, status, WebSocket, WebSocketDisconnect
+from typing import List
+import json
+from datetime import datetime
+
+from models.schemas import MessageCreate, Message
+from routes.auth import get_current_user
+from config.database import get_db
+from services.websocket_manager import manager
+from services.anti_scam_service import AntiScamService
+
+router = APIRouter()
+
+@router.get("/{match_id}/messages", response_model=List[Message])
+async def get_messages(
+    match_id: int,
+    limit: int = 50,
+    offset: int = 0,
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """Get messages for a match"""
+    try:
+        # Verify user is part of this match
+        match = await db.fetchone(
+            "SELECT * FROM matches WHERE id = ? AND (user1_id = ? OR user2_id = ?)",
+            (match_id, current_user["id"], current_user["id"])
+        )
+        
+        if not match:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Match not found"
+            )
+        
+        # Get messages
+        messages = await db.fetchall("""
+            SELECT m.*, u.name as sender_name
+            FROM messages m
+            JOIN users u ON m.sender_id = u.id
+            WHERE m.match_id = ?
+            ORDER BY m.created_at DESC
+            LIMIT ? OFFSET ?
+        """, (match_id, limit, offset))
+        
+        message_list = []
+        for msg in messages:
+            msg_dict = dict(msg)
+            message_list.append(Message(
+                id=msg_dict["id"],
+                match_id=msg_dict["match_id"],
+                sender_id=msg_dict["sender_id"],
+                content=msg_dict["content"],
+                message_type=msg_dict["message_type"],
+                is_read=msg_dict["is_read"],
+                created_at=msg_dict["created_at"],
+                sender_name=msg_dict["sender_name"]
+            ))
+        
+        # Mark messages as read
+        await db.execute(
+            "UPDATE messages SET is_read = TRUE WHERE match_id = ? AND sender_id != ?",
+            (match_id, current_user["id"])
+        )
+        await db.commit()
+        
+        return list(reversed(message_list))  # Return in chronological order
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch messages: {str(e)}"
+        )
+
+@router.post("/{match_id}/messages", response_model=Message)
+async def send_message(
+    match_id: int,
+    message: MessageCreate,
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """Send a message in a match"""
+    try:
+        # Verify user is part of this match
+        match = await db.fetchone(
+            "SELECT * FROM matches WHERE id = ? AND (user1_id = ? OR user2_id = ?)",
+            (match_id, current_user["id"], current_user["id"])
+        )
+        
+        if not match:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Match not found"
+            )
+        
+        # Anti-scam analysis
+        scam_analysis = AntiScamService.analyze_message(
+            message.content, current_user["id"], match_id
+        )
+        
+        # Insert message with scam flags
+        await db.execute("""
+            INSERT INTO messages (match_id, sender_id, content, message_type, is_flagged, risk_score)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (
+            match_id, 
+            current_user["id"], 
+            message.content, 
+            message.message_type,
+            scam_analysis['is_suspicious'],
+            scam_analysis['risk_score']
+        ))
+        
+        # Auto-flag user if high risk
+        if scam_analysis['action_required']:
+            await AntiScamService.flag_user(
+                current_user["id"],
+                "Suspicious message content",
+                None,  # System flag
+                scam_analysis
+            )
+        
+        # Get the created message
+        created_message = await db.fetchone("""
+            SELECT m.*, u.name as sender_name
+            FROM messages m
+            JOIN users u ON m.sender_id = u.id
+            WHERE m.match_id = ? AND m.sender_id = ?
+            ORDER BY m.created_at DESC
+            LIMIT 1
+        """, (match_id, current_user["id"]))
+        
+        await db.commit()
+        
+        msg_dict = dict(created_message)
+        new_message = Message(
+            id=msg_dict["id"],
+            match_id=msg_dict["match_id"],
+            sender_id=msg_dict["sender_id"],
+            content=msg_dict["content"],
+            message_type=msg_dict["message_type"],
+            is_read=msg_dict["is_read"],
+            created_at=msg_dict["created_at"],
+            sender_name=msg_dict["sender_name"]
+        )
+        
+        # Send via WebSocket to other user
+        other_user_id = match["user1_id"] if match["user2_id"] == current_user["id"] else match["user2_id"]
+        await manager.send_message_to_user(other_user_id, {
+            "type": "new_message",
+            "message": new_message.dict()
+        })
+        
+        return new_message
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to send message: {str(e)}"
+        )
+
+@router.websocket("/ws/{user_id}")
+async def websocket_endpoint(websocket: WebSocket, user_id: int):
+    """WebSocket endpoint for real-time chat"""
+    await manager.connect(websocket, user_id)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            message_data = json.loads(data)
+            
+            # Handle different message types
+            if message_data.get("type") == "ping":
+                await websocket.send_text(json.dumps({"type": "pong"}))
+            elif message_data.get("type") == "typing":
+                # Broadcast typing indicator to match partner
+                match_id = message_data.get("match_id")
+                if match_id:
+                    await manager.broadcast_to_match(match_id, user_id, {
+                        "type": "typing",
+                        "user_id": user_id,
+                        "is_typing": message_data.get("is_typing", False)
+                    })
+                    
+    except WebSocketDisconnect:
+        manager.disconnect(user_id)
+
+@router.get("/{match_id}/unread-count")
+async def get_unread_count(
+    match_id: int,
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """Get unread message count for a match"""
+    try:
+        # Verify user is part of this match
+        match = await db.fetchone(
+            "SELECT * FROM matches WHERE id = ? AND (user1_id = ? OR user2_id = ?)",
+            (match_id, current_user["id"], current_user["id"])
+        )
+        
+        if not match:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Match not found"
+            )
+        
+        # Count unread messages
+        unread_count = await db.fetchone(
+            "SELECT COUNT(*) as count FROM messages WHERE match_id = ? AND sender_id != ? AND is_read = FALSE",
+            (match_id, current_user["id"])
+        )
+        
+        return {"unread_count": unread_count["count"]}
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get unread count: {str(e)}"
+        )
