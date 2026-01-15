@@ -94,31 +94,22 @@ class UserService extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchDiscoverUsers(String token, {
+  Future<void> fetchAdvancedDiscoverUsers(
+    String token, {
+    Map<String, dynamic>? filters,
     int limit = 20,
-    int? minAge,
-    int? maxAge,
-    double? maxDistanceKm,
-    String? relationshipIntent,
   }) async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      final queryParams = <String, String>{
-        'limit': limit.toString(),
-        if (minAge != null) 'min_age': minAge.toString(),
-        if (maxAge != null) 'max_age': maxAge.toString(),
-        if (maxDistanceKm != null) 'max_distance_km': maxDistanceKm.toString(),
-        if (relationshipIntent != null) 'relationship_intent': relationshipIntent,
-      };
-
-      final uri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.discover}')
-          .replace(queryParameters: queryParams);
-
-      final response = await http.get(
-        uri,
+      final response = await http.post(
+        Uri.parse('${ApiConstants.baseUrl}${ApiConstants.discoverAdvanced}'),
         headers: ApiConstants.getHeaders(token: token),
+        body: jsonEncode({
+          'filters': filters ?? {},
+          'limit': limit,
+        }),
       );
 
       if (response.statusCode == 200) {
@@ -189,6 +180,22 @@ class UserService extends ChangeNotifier {
 
       return response.statusCode == 200;
     } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> updateRichProfile(String token, Map<String, dynamic> profileData) async {
+    try {
+      final response = await http.put(
+        Uri.parse('${ApiConstants.baseUrl}${ApiConstants.richProfile}'),
+        headers: ApiConstants.getHeaders(token: token),
+        body: jsonEncode(profileData),
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      _error = 'Failed to update rich profile: ${e.toString()}';
+      notifyListeners();
       return false;
     }
   }

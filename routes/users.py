@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from typing import List, Optional
+from typing import List, Optional, Dict
 import json
 
 from models.schemas import UserProfile, UserUpdate, ImageUpload
@@ -10,6 +10,8 @@ from services.location_service import LocationService
 from services.matching_service import MatchingService
 from services.photo_privacy_service import PhotoPrivacyService
 from services.anti_scam_service import AntiScamService
+from services.compatibility_service import CompatibilityService
+from services.filter_service import FilterService
 
 router = APIRouter()
 
@@ -207,63 +209,28 @@ async def delete_profile_image(
             detail=f"Failed to delete image: {str(e)}"
         )
 
-@router.get("/discover")
-async def discover_users(
-    limit: int = Query(10, le=50),
-    min_age: Optional[int] = Query(None, ge=18, le=100),
-    max_age: Optional[int] = Query(None, ge=18, le=100),
-    max_distance_km: Optional[float] = Query(None, ge=0.1, le=100),
-    relationship_intent: Optional[str] = Query(None),
-    required_interests: Optional[str] = Query(None),
+@router.get("/discover-advanced")
+async def discover_users_advanced(
+    filters: Dict = {},
+    limit: int = Query(20, le=50),
     current_user: dict = Depends(get_current_user),
     db = Depends(get_db)
 ):
-    """Advanced user discovery with filtering"""
+    """Advanced user discovery with smart filters and compatibility"""
     try:
         from services.telegram_service import get_image_url
         
-        # Build query with filters
-        where_conditions = ["id != ?"]
-        params = [current_user["id"]]
-        
-        # Age filtering
-        if min_age:
-            where_conditions.append("age >= ?")
-            params.append(min_age)
-        if max_age:
-            where_conditions.append("age <= ?")
-            params.append(max_age)
-            
-        # Relationship intent filtering
-        if relationship_intent:
-            where_conditions.append("relationship_intent = ?")
-            params.append(relationship_intent)
-        
-        where_clause = " AND ".join(where_conditions)
-        
-        users = await db.fetchall(f"""
-            SELECT id, name, age, bio, location, profile_images, interests, relationship_intent, created_at
-            FROM users 
-            WHERE {where_clause}
-            ORDER BY RANDOM()
-            LIMIT ?
-        """, (*params, limit))
-        
-        print(f"Found {len(users)} users for discovery (filters: min_age={min_age}, max_age={max_age}, intent={relationship_intent})")
+        # Apply smart filters
+        users = await FilterService.apply_smart_filters(
+            user_id=current_user["id"],
+            filters=filters,
+            limit=limit
+        )
         
         enhanced_matches = []
         for user in users:
-            user_dict = dict(user)
-            
-            # Interest filtering (post-query)
-            user_interests = json.loads(user_dict.get('interests', '[]'))
-            if required_interests:
-                required_list = [i.strip() for i in required_interests.split(',')]
-                if not any(interest in user_interests for interest in required_list):
-                    continue  # Skip user if no matching interests
-            
             # Convert file_ids to URLs
-            profile_images = json.loads(user_dict.get("profile_images", "[]"))
+            profile_images = json.loads(user.get("profile_images", "[]"))
             image_urls = []
             
             if profile_images:
@@ -277,25 +244,37 @@ async def discover_users(
             else:
                 image_urls.append("https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=HeartLink")
             
-            user_dict['profile_images'] = image_urls
-            user_dict['interests'] = user_interests
-            enhanced_matches.append(user_dict)
-        
-        print(f"After filtering: {len(enhanced_matches)} users")
+            # Get compatibility score
+            compatibility_score = await CompatibilityService.get_compatibility_score(
+                current_user["id"], user['id']
+            )
+            
+            user_data = {
+                'id': user['id'],
+                'name': user['name'],
+                'age': user['age'],
+                'bio': user['bio'],
+                'location': user['location'],
+                'job_title': user.get('job_title'),
+                'education_level': user.get('education_level'),
+                'height': user.get('height'),
+                'interests': json.loads(user.get('interests', '[]')),
+                'profile_images': image_urls,
+                'compatibility_score': compatibility_score,
+                'distance_km': user.get('distance_km', 0),
+                'last_active': user.get('last_active')
+            }
+            
+            enhanced_matches.append(user_data)
         
         return {
             "users": enhanced_matches,
             "total_found": len(enhanced_matches),
-            "filters_applied": {
-                "min_age": min_age,
-                "max_age": max_age,
-                "relationship_intent": relationship_intent,
-                "required_interests": required_interests
-            }
+            "filters_applied": filters
         }
         
     except Exception as e:
-        print(f"Discover error: {e}")
+        print(f"Advanced discover error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch users: {str(e)}"
@@ -591,24 +570,100 @@ async def get_available_interests():
         "total_count": len(interests_list)
     }
 
-@router.put("/photo-privacy")
-async def update_photo_privacy(
-    blur_enabled: bool,
-    current_user: dict = Depends(get_current_user)
+@router.get("/filter-options")
+async def get_filter_options():
+    """Get all available filter options"""
+    return FilterService.get_filter_options()
+
+@router.put("/rich-profile")
+async def update_rich_profile(
+    profile_data: dict,
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
 ):
-    """Update photo blur preference"""
+    """Update rich profile data"""
     try:
-        await PhotoPrivacyService.update_blur_preference(
-            current_user["id"], blur_enabled
-        )
+        update_fields = []
+        update_values = []
         
-        return {
-            "message": "Photo privacy updated",
-            "blur_enabled": blur_enabled
-        }
+        # Job & Education
+        if 'job_title' in profile_data:
+            update_fields.append("job_title = ?")
+            update_values.append(profile_data['job_title'])
+        
+        if 'company' in profile_data:
+            update_fields.append("company = ?")
+            update_values.append(profile_data['company'])
+        
+        if 'education_level' in profile_data:
+            update_fields.append("education_level = ?")
+            update_values.append(profile_data['education_level'])
+        
+        if 'education_details' in profile_data:
+            update_fields.append("education_details = ?")
+            update_values.append(profile_data['education_details'])
+        
+        # Physical attributes
+        if 'height' in profile_data:
+            update_fields.append("height = ?")
+            update_values.append(profile_data['height'])
+        
+        if 'body_type' in profile_data:
+            update_fields.append("body_type = ?")
+            update_values.append(profile_data['body_type'])
+        
+        # Lifestyle
+        if 'smoking' in profile_data:
+            update_fields.append("smoking = ?")
+            update_values.append(profile_data['smoking'])
+        
+        if 'drinking' in profile_data:
+            update_fields.append("drinking = ?")
+            update_values.append(profile_data['drinking'])
+        
+        if 'diet_preference' in profile_data:
+            update_fields.append("diet_preference = ?")
+            update_values.append(profile_data['diet_preference'])
+        
+        # Cultural
+        if 'religion' in profile_data:
+            update_fields.append("religion = ?")
+            update_values.append(profile_data['religion'])
+        
+        if 'caste' in profile_data:
+            update_fields.append("caste = ?")
+            update_values.append(profile_data['caste'])
+        
+        if 'mother_tongue' in profile_data:
+            update_fields.append("mother_tongue = ?")
+            update_values.append(profile_data['mother_tongue'])
+        
+        # Activity
+        if 'gym_frequency' in profile_data:
+            update_fields.append("gym_frequency = ?")
+            update_values.append(profile_data['gym_frequency'])
+        
+        if 'travel_frequency' in profile_data:
+            update_fields.append("travel_frequency = ?")
+            update_values.append(profile_data['travel_frequency'])
+        
+        # Profile prompts
+        if 'profile_prompts' in profile_data:
+            update_fields.append("profile_prompts = ?")
+            update_values.append(json.dumps(profile_data['profile_prompts']))
+        
+        if update_fields:
+            update_fields.append("updated_at = CURRENT_TIMESTAMP")
+            update_values.append(current_user["id"])
+            
+            query = f"UPDATE users SET {', '.join(update_fields)} WHERE id = ?"
+            await db.execute(query, tuple(update_values))
+            await db.commit()
+        
+        return {"message": "Rich profile updated successfully"}
         
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update privacy: {str(e)}"
+            detail=f"Failed to update rich profile: {str(e)}"
         )

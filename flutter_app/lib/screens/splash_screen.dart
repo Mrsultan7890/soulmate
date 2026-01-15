@@ -41,6 +41,12 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
     final authService = Provider.of<AuthService>(context, listen: false);
     
+    // Wait for auth initialization to complete
+    while (authService.isLoading) {
+      await Future.delayed(const Duration(milliseconds: 100));
+      if (!mounted) return;
+    }
+    
     if (authService.isAuthenticated) {
       Navigator.of(context).pushReplacementNamed('/home');
     } else {

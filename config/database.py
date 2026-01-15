@@ -67,6 +67,33 @@ async def init_db():
             latitude REAL,
             longitude REAL,
             gps_updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            
+            -- Rich Profile Data
+            job_title TEXT,
+            company TEXT,
+            education_level TEXT, -- 'High School', 'Bachelor', 'Master', 'PhD', 'Other'
+            education_details TEXT,
+            height INTEGER, -- in cm
+            body_type TEXT, -- 'Slim', 'Average', 'Athletic', 'Curvy', 'Plus Size'
+            smoking TEXT, -- 'Never', 'Occasionally', 'Regularly', 'Trying to quit'
+            drinking TEXT, -- 'Never', 'Socially', 'Regularly', 'Occasionally'
+            religion TEXT,
+            caste TEXT,
+            mother_tongue TEXT,
+            diet_preference TEXT, -- 'Vegetarian', 'Non-Vegetarian', 'Vegan', 'Jain'
+            
+            -- Lifestyle & Preferences
+            gym_frequency TEXT, -- 'Never', 'Rarely', 'Sometimes', 'Often', 'Daily'
+            travel_frequency TEXT, -- 'Never', 'Rarely', 'Sometimes', 'Often', 'Love to travel'
+            
+            -- Profile Prompts (JSON)
+            profile_prompts TEXT, -- JSON: {"ideal_date": "...", "fun_fact": "...", etc.}
+            
+            -- Activity Tracking
+            last_active DATETIME DEFAULT CURRENT_TIMESTAMP,
+            response_time_avg INTEGER DEFAULT 0, -- in minutes
+            activity_level TEXT DEFAULT 'Medium', -- 'Low', 'Medium', 'High'
+            
             interests TEXT, -- JSON array of interests
             relationship_intent TEXT, -- "serious", "casual", "friends"
             profile_images TEXT, -- JSON array of Telegram file IDs
@@ -114,11 +141,16 @@ async def init_db():
             match_id INTEGER NOT NULL,
             sender_id INTEGER NOT NULL,
             content TEXT NOT NULL,
-            message_type TEXT DEFAULT 'text', -- text, image, emoji
+            message_type TEXT DEFAULT 'text', -- text, image, emoji, voice
             is_read BOOLEAN DEFAULT FALSE,
             is_flagged BOOLEAN DEFAULT FALSE,
             risk_score INTEGER DEFAULT 0,
+            
+            -- Message Reactions
+            reactions TEXT, -- JSON: {"user_id": "reaction_type"}
+            
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            read_at DATETIME,
             FOREIGN KEY (match_id) REFERENCES matches (id),
             FOREIGN KEY (sender_id) REFERENCES users (id)
         )
@@ -135,6 +167,35 @@ async def init_db():
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users (id),
             FOREIGN KEY (reported_by) REFERENCES users (id)
+        )
+    """)
+    
+    # Compatibility scores table
+    await db.execute("""
+        CREATE TABLE IF NOT EXISTS compatibility_scores (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user1_id INTEGER NOT NULL,
+            user2_id INTEGER NOT NULL,
+            interest_score REAL DEFAULT 0,
+            lifestyle_score REAL DEFAULT 0,
+            activity_score REAL DEFAULT 0,
+            overall_score REAL DEFAULT 0,
+            calculated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user1_id) REFERENCES users (id),
+            FOREIGN KEY (user2_id) REFERENCES users (id),
+            UNIQUE(user1_id, user2_id)
+        )
+    """)
+    
+    # Safety tips table
+    await db.execute("""
+        CREATE TABLE IF NOT EXISTS safety_tips (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            category TEXT NOT NULL, -- 'meeting', 'online', 'general'
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
     

@@ -7,6 +7,24 @@ class User {
   final String? location;
   final double? latitude;
   final double? longitude;
+  
+  // Rich Profile Data
+  final String? jobTitle;
+  final String? company;
+  final String? educationLevel;
+  final String? educationDetails;
+  final int? height;
+  final String? bodyType;
+  final String? smoking;
+  final String? drinking;
+  final String? dietPreference;
+  final String? religion;
+  final String? caste;
+  final String? motherTongue;
+  final String? gymFrequency;
+  final String? travelFrequency;
+  final Map<String, String>? profilePrompts;
+  
   final List<String> interests;
   final String? relationshipIntent;
   final List<String> profileImages;
@@ -24,6 +42,21 @@ class User {
     this.location,
     this.latitude,
     this.longitude,
+    this.jobTitle,
+    this.company,
+    this.educationLevel,
+    this.educationDetails,
+    this.height,
+    this.bodyType,
+    this.smoking,
+    this.drinking,
+    this.dietPreference,
+    this.religion,
+    this.caste,
+    this.motherTongue,
+    this.gymFrequency,
+    this.travelFrequency,
+    this.profilePrompts,
     this.interests = const [],
     this.relationshipIntent,
     this.profileImages = const [],
@@ -43,6 +76,23 @@ class User {
       location: json['location'],
       latitude: json['latitude']?.toDouble(),
       longitude: json['longitude']?.toDouble(),
+      jobTitle: json['job_title'],
+      company: json['company'],
+      educationLevel: json['education_level'],
+      educationDetails: json['education_details'],
+      height: json['height'],
+      bodyType: json['body_type'],
+      smoking: json['smoking'],
+      drinking: json['drinking'],
+      dietPreference: json['diet_preference'],
+      religion: json['religion'],
+      caste: json['caste'],
+      motherTongue: json['mother_tongue'],
+      gymFrequency: json['gym_frequency'],
+      travelFrequency: json['travel_frequency'],
+      profilePrompts: json['profile_prompts'] != null 
+          ? Map<String, String>.from(json['profile_prompts'])
+          : null,
       interests: json['interests'] != null 
           ? List<String>.from(json['interests']) 
           : [],
@@ -67,6 +117,21 @@ class User {
       'location': location,
       'latitude': latitude,
       'longitude': longitude,
+      'job_title': jobTitle,
+      'company': company,
+      'education_level': educationLevel,
+      'education_details': educationDetails,
+      'height': height,
+      'body_type': bodyType,
+      'smoking': smoking,
+      'drinking': drinking,
+      'diet_preference': dietPreference,
+      'religion': religion,
+      'caste': caste,
+      'mother_tongue': motherTongue,
+      'gym_frequency': gymFrequency,
+      'travel_frequency': travelFrequency,
+      'profile_prompts': profilePrompts,
       'interests': interests,
       'relationship_intent': relationshipIntent,
       'profile_images': profileImages,

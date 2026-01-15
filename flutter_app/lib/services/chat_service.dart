@@ -2,20 +2,19 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
-import '../models/match.dart';
 import '../utils/api_constants.dart';
 
 class ChatService extends ChangeNotifier {
-  final Map<int, List<Message>> _messagesByMatch = {};
+  final Map<int, List<Map<String, dynamic>>> _messagesByMatch = {};
   WebSocketChannel? _channel;
   bool _isLoading = false;
   String? _error;
 
-  Map<int, List<Message>> get messagesByMatch => _messagesByMatch;
+  Map<int, List<Map<String, dynamic>>> get messagesByMatch => _messagesByMatch;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  List<Message> getMessagesForMatch(int matchId) {
+  List<Map<String, dynamic>> getMessagesForMatch(int matchId) {
     return _messagesByMatch[matchId] ?? [];
   }
 
@@ -31,7 +30,7 @@ class ChatService extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        _messagesByMatch[matchId] = data.map((msg) => Message.fromJson(msg)).toList();
+        _messagesByMatch[matchId] = data.map((msg) => msg is Map<String, dynamic> ? msg : {}).toList().cast<Map<String, dynamic>>();
       } else {
         _error = 'Failed to fetch messages';
       }
@@ -62,7 +61,7 @@ class ChatService extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final newMessage = Message.fromJson(data);
+        final newMessage = data;
         
         if (_messagesByMatch[matchId] == null) {
           _messagesByMatch[matchId] = [];
@@ -89,8 +88,8 @@ class ChatService extends ChangeNotifier {
         (message) {
           final data = jsonDecode(message);
           if (data['type'] == 'new_message') {
-            final newMessage = Message.fromJson(data['message']);
-            final matchId = newMessage.matchId;
+            final newMessage = data['message'];
+            final matchId = newMessage['match_id'];
             
             if (_messagesByMatch[matchId] == null) {
               _messagesByMatch[matchId] = [];

@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import uvicorn
 
-from routes import auth, users, matches, chat, safety, face_verification
+from routes import auth, users, matches, chat, safety, face_verification, enhanced_chat, safety_tips
 from config.database import init_db
 from config.settings import settings
 
@@ -32,7 +32,9 @@ app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"])
 app.include_router(matches.router, prefix="/api/matches", tags=["Matches"])
 app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
+app.include_router(enhanced_chat.router, prefix="/api/enhanced-chat", tags=["Enhanced Chat"])
 app.include_router(safety.router, prefix="/api/safety", tags=["Safety"])
+app.include_router(safety_tips.router, prefix="/api/safety-tips", tags=["Safety Tips"])
 app.include_router(face_verification.router, prefix="/api/face", tags=["Face Verification"])
 
 # WebSocket route (no prefix for WebSocket)

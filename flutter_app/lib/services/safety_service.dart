@@ -4,62 +4,132 @@ import 'package:http/http.dart' as http;
 import '../utils/api_constants.dart';
 
 class SafetyService extends ChangeNotifier {
+  List<SafetyTip> _safetyTips = [];
+  SafetyResources? _safetyResources;
   bool _isLoading = false;
   String? _error;
 
+  List<SafetyTip> get safetyTips => _safetyTips;
+  SafetyResources? get safetyResources => _safetyResources;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  Future<bool> reportUser({
-    required String token,
-    required int reportedUserId,
-    required String reason,
-    Map<String, dynamic>? evidence,
-  }) async {
+  Future<void> fetchSafetyTips({String category = 'all'}) async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      final response = await http.post(
-        Uri.parse('${ApiConstants.baseUrl}/api/safety/report-user'),
-        headers: ApiConstants.getHeaders(token: token),
-        body: jsonEncode({
-          'reported_user_id': reportedUserId,
-          'reason': reason,
-          'evidence': evidence ?? {},
-        }),
+      final response = await http.get(
+        Uri.parse('${ApiConstants.baseUrl}${ApiConstants.safetyTips}?category=$category'),
       );
 
-      _isLoading = false;
       if (response.statusCode == 200) {
-        notifyListeners();
-        return true;
+        final data = jsonDecode(response.body);
+        _safetyTips = (data['tips'] as List)
+            .map((tip) => SafetyTip.fromJson(tip))
+            .toList();
       } else {
-        _error = 'Failed to report user';
-        notifyListeners();
-        return false;
+        _error = 'Failed to fetch safety tips';
       }
     } catch (e) {
       _error = 'Network error: ${e.toString()}';
-      _isLoading = false;
-      notifyListeners();
-      return false;
     }
+
+    _isLoading = false;
+    notifyListeners();
   }
 
-  Future<Map<String, dynamic>?> checkUserSafety(String token, int userId) async {
+  Future<void> fetchSafetyResources() async {
     try {
       final response = await http.get(
-        Uri.parse('${ApiConstants.baseUrl}/api/safety/user-safety/$userId'),
-        headers: ApiConstants.getHeaders(token: token),
+        Uri.parse('${ApiConstants.baseUrl}${ApiConstants.safetyResources}'),
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        final data = jsonDecode(response.body);
+        _safetyResources = SafetyResources.fromJson(data);
+        notifyListeners();
       }
-      return null;
     } catch (e) {
-      return null;
+      _error = 'Failed to fetch safety resources: ${e.toString()}';
+      notifyListeners();
     }
+  }
+
+  List<SafetyTip> getTipsByCategory(String category) {
+    return _safetyTips.where((tip) => tip.category == category).toList();
+  }
+
+  void clearError() {
+    _error = null;
+    notifyListeners();
+  }
+}
+
+class SafetyTip {
+  final int id;
+  final String title;
+  final String content;
+  final String category;
+  final bool isActive;
+  final DateTime createdAt;
+
+  SafetyTip({
+    required this.id,
+    required this.title,
+    required this.content,
+    required this.category,
+    required this.isActive,
+    required this.createdAt,
+  });
+
+  factory SafetyTip.fromJson(Map<String, dynamic> json) {
+    return SafetyTip(
+      id: json['id'],
+      title: json['title'],
+      content: json['content'],
+      category: json['category'],
+      isActive: json['is_active'] ?? true,
+      createdAt: DateTime.parse(json['created_at']),
+    );
+  }
+}
+
+class SafetyResources {
+  final Map<String, String> emergencyContacts;
+  final List<SafetyApp> safetyApps;
+  final List<String> datingSafetyChecklist;
+
+  SafetyResources({
+    required this.emergencyContacts,
+    required this.safetyApps,
+    required this.datingSafetyChecklist,
+  });
+
+  factory SafetyResources.fromJson(Map<String, dynamic> json) {
+    return SafetyResources(
+      emergencyContacts: Map<String, String>.from(json['emergency_contacts']),
+      safetyApps: (json['safety_apps'] as List)
+          .map((app) => SafetyApp.fromJson(app))
+          .toList(),
+      datingSafetyChecklist: List<String>.from(json['dating_safety_checklist']),
+    );
+  }
+}
+
+class SafetyApp {
+  final String name;
+  final String description;
+
+  SafetyApp({
+    required this.name,
+    required this.description,
+  });
+
+  factory SafetyApp.fromJson(Map<String, dynamic> json) {
+    return SafetyApp(
+      name: json['name'],
+      description: json['description'],
+    );
   }
 }

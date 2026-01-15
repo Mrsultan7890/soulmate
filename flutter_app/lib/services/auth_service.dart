@@ -4,30 +4,69 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import '../utils/api_constants.dart';
+import '../utils/session_manager.dart';
 
 class AuthService extends ChangeNotifier {
   User? _currentUser;
   String? _token;
   bool _isLoading = false;
   String? _error;
+  bool _rememberMe = true;
 
   User? get currentUser => _currentUser;
   String? get token => _token;
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get isAuthenticated => _token != null && _currentUser != null;
+  bool get rememberMe => _rememberMe;
 
   AuthService() {
-    _loadToken();
+    _initializeAuth();
   }
 
-  Future<void> _loadToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    _token = prefs.getString('auth_token');
-    if (_token != null) {
-      await getCurrentUser();
-    }
+  Future<void> _initializeAuth() async {
+    _isLoading = true;
     notifyListeners();
+    
+    await _loadStoredAuth();
+    
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> _loadStoredAuth() async {
+    try {
+      final sessionData = await SessionManager.getStoredSession();
+      
+      if (sessionData != null) {
+        _token = sessionData['token'];
+        _currentUser = User.fromJson(sessionData['userData']);
+        _rememberMe = sessionData['rememberMe'] ?? true;
+        
+        // Verify token is still valid
+        await getCurrentUser();
+      }
+    } catch (e) {
+      print('Error loading stored auth: $e');
+      await SessionManager.clearSession();
+    }
+  }
+
+  Future<void> _saveAuthData() async {
+    if (_token != null && _currentUser != null) {
+      await SessionManager.saveSession(
+        token: _token!,
+        userData: _currentUser!.toJson(),
+        rememberMe: _rememberMe,
+      );
+    }
+  }
+
+  Future<void> _clearStoredAuth() async {
+    await SessionManager.clearSession();
+    _token = null;
+    _currentUser = null;
+    _rememberMe = true;
   }
 
   Future<bool> register({
@@ -57,8 +96,7 @@ class AuthService extends ChangeNotifier {
         _token = data['access_token'];
         _currentUser = User.fromJson(data['user']);
         
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('auth_token', _token!);
+        await _saveAuthData();
         
         _isLoading = false;
         notifyListeners();
@@ -81,9 +119,11 @@ class AuthService extends ChangeNotifier {
   Future<bool> login({
     required String email,
     required String password,
+    bool rememberMe = true,
   }) async {
     _isLoading = true;
     _error = null;
+    _rememberMe = rememberMe;
     notifyListeners();
 
     try {
@@ -101,8 +141,7 @@ class AuthService extends ChangeNotifier {
         _token = data['access_token'];
         _currentUser = User.fromJson(data['user']);
         
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('auth_token', _token!);
+        await _saveAuthData();
         
         _isLoading = false;
         notifyListeners();
@@ -134,7 +173,11 @@ class AuthService extends ChangeNotifier {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         _currentUser = User.fromJson(data);
+        await _saveAuthData(); // Save updated user data
         notifyListeners();
+      } else if (response.statusCode == 401) {
+        // Token expired, clear auth
+        await logout();
       }
     } catch (e) {
       print('Error getting current user: $e');
@@ -142,12 +185,7 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    _token = null;
-    _currentUser = null;
-    
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('auth_token');
-    
+    await _clearStoredAuth();
     notifyListeners();
   }
 

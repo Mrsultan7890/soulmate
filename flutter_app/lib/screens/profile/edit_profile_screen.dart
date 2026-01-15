@@ -356,6 +356,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       },
     );
   }
+
+  void _showInterestsDialog() {
     final availableInterests = ['Travel', 'Music', 'Movies', 'Sports', 'Reading', 'Cooking', 'Photography', 'Gaming', 'Fitness', 'Art', 'Dancing', 'Yoga', 'Hiking', 'Swimming', 'Coffee', 'Wine', 'Foodie', 'Netflix', 'Beach', 'Mountains', 'Dogs', 'Cats'];
     
     showDialog(

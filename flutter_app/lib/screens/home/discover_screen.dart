@@ -7,7 +7,7 @@ import '../../services/match_service.dart';
 import '../../utils/theme.dart';
 import '../../widgets/user_card.dart';
 import '../../widgets/match_dialog.dart';
-import '../settings/filter_screen.dart';
+import '../settings/advanced_filter_screen.dart';
 import '../nearby/nearby_users_screen.dart';
 
 class DiscoverScreen extends StatefulWidget {
@@ -24,6 +24,19 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   void initState() {
     super.initState();
     _loadUsers();
+  }
+
+  Future<void> _applyAdvancedFilters(Map<String, dynamic> filters) async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final userService = Provider.of<UserService>(context, listen: false);
+    
+    if (authService.token != null) {
+      // Call advanced discovery API with filters
+      await userService.fetchAdvancedDiscoverUsers(
+        authService.token!,
+        filters: filters,
+      );
+    }
   }
 
   Future<void> _loadUsers() async {
@@ -142,20 +155,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 onPressed: () async {
                   final filters = await Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => FilterScreen(currentFilters: const {})),
+                    MaterialPageRoute(builder: (context) => const AdvancedFilterScreen()),
                   );
                   if (filters != null) {
-                    final authService = Provider.of<AuthService>(context, listen: false);
-                    final userService = Provider.of<UserService>(context, listen: false);
-                    if (authService.token != null) {
-                      await userService.fetchDiscoverUsers(
-                        authService.token!,
-                        minAge: filters['min_age'],
-                        maxAge: filters['max_age'],
-                        maxDistanceKm: filters['max_distance_km'],
-                        relationshipIntent: filters['relationship_intent'],
-                      );
-                    }
+                    await _applyAdvancedFilters(filters);
                   }
                 },
                 icon: const Icon(Icons.tune, color: AppTheme.primaryColor),
@@ -203,14 +206,14 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           _buildActionButton(Icons.close, AppTheme.errorColor, () {
-            _controller.swipe(CardSwiperDirection.left);
+            _controller.swipeLeft();
           }),
           _buildActionButton(Icons.star, AppTheme.secondaryColor, () {
             // Super like functionality
-            _controller.swipe(CardSwiperDirection.top);
+            _controller.swipeUp();
           }),
           _buildActionButton(Icons.favorite, AppTheme.primaryColor, () {
-            _controller.swipe(CardSwiperDirection.right);
+            _controller.swipeRight();
           }),
         ],
       ),

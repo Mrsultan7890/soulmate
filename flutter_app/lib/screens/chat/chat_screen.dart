@@ -152,7 +152,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final message = messages[index];
-                    final isMe = message.senderId == authService.currentUser!.id;
+                    final isMe = message['sender_id'] == authService.currentUser!.id;
                     
                     return _buildMessageBubble(message, isMe);
                   },
@@ -166,7 +166,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildMessageBubble(Message message, bool isMe) {
+  Widget _buildMessageBubble(dynamic message, bool isMe) {
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -182,7 +182,7 @@ class _ChatScreenState extends State<ChatScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              message.content,
+              message['content'] ?? '',
               style: TextStyle(
                 color: isMe ? Colors.white : AppTheme.textPrimary,
                 fontSize: 14,
@@ -190,7 +190,7 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              timeago.format(message.createdAt),
+              timeago.format(DateTime.parse(message['created_at'] ?? DateTime.now().toIso8601String())),
               style: TextStyle(
                 color: isMe ? Colors.white.withOpacity(0.7) : AppTheme.textSecondary,
                 fontSize: 10,

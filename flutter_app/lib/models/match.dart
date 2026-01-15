@@ -36,6 +36,19 @@ class Match {
     );
   }
 
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'user1_id': user1Id,
+      'user2_id': user2Id,
+      'user1_profile': user1Profile.toJson(),
+      'user2_profile': user2Profile.toJson(),
+      'created_at': createdAt.toIso8601String(),
+      'last_message': lastMessage,
+      'last_message_time': lastMessageTime?.toIso8601String(),
+    };
+  }
+
   User getOtherUser(int currentUserId) {
     return currentUserId == user1Id ? user2Profile : user1Profile;
   }

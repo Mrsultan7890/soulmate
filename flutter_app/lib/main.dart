@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'screens/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
@@ -11,6 +12,7 @@ import 'services/match_service.dart';
 import 'services/chat_service.dart';
 import 'services/safety_service.dart';
 import 'services/location_service.dart';
+import 'services/enhanced_chat_service.dart';
 import 'utils/theme.dart';
 
 void main() {
@@ -35,6 +37,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ChatService()),
         ChangeNotifierProvider(create: (_) => SafetyService()),
         ChangeNotifierProvider(create: (_) => LocationService()),
+        ChangeNotifierProvider(create: (_) => EnhancedChatService()),
       ],
       child: MaterialApp(
         title: 'HeartLink',
