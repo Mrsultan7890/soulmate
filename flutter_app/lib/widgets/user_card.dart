@@ -44,7 +44,7 @@ class UserCard extends StatelessWidget {
     }
 
     return CachedNetworkImage(
-      imageUrl: 'https://api.telegram.org/file/bot<BOT_TOKEN>/${user.firstImage}',
+      imageUrl: user.firstImage,  // Use the full URL from backend
       fit: BoxFit.cover,
       placeholder: (context, url) => Container(
         color: AppTheme.primaryColor.withOpacity(0.1),
@@ -52,7 +52,13 @@ class UserCard extends StatelessWidget {
       ),
       errorWidget: (context, url, error) => Container(
         color: AppTheme.primaryColor.withOpacity(0.2),
-        child: const Icon(Icons.person, size: 100, color: AppTheme.primaryColor),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.person, size: 100, color: AppTheme.primaryColor),
+            Text('Failed to load image', style: TextStyle(color: AppTheme.primaryColor)),
+          ],
+        ),
       ),
     );
   }

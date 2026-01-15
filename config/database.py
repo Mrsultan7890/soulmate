@@ -66,6 +66,7 @@ async def init_db():
             location TEXT,
             latitude REAL,
             longitude REAL,
+            gps_updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             interests TEXT, -- JSON array of interests
             relationship_intent TEXT, -- "serious", "casual", "friends"
             profile_images TEXT, -- JSON array of Telegram file IDs

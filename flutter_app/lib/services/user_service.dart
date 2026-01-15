@@ -141,8 +141,9 @@ class UserService extends ChangeNotifier {
     String token,
     double latitude,
     double longitude,
-    String? locationName,
-  ) async {
+    String? locationName, {
+    double? gpsAccuracy,
+  }) async {
     try {
       final response = await http.put(
         Uri.parse('${ApiConstants.baseUrl}${ApiConstants.updateLocation}'),
@@ -151,6 +152,7 @@ class UserService extends ChangeNotifier {
           'latitude': latitude,
           'longitude': longitude,
           'location_name': locationName,
+          'gps_accuracy': gpsAccuracy ?? 0,
         }),
       );
 

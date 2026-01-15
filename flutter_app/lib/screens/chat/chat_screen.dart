@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
-import '../../models/match.dart';
 import '../../services/auth_service.dart';
 import '../../services/chat_service.dart';
 import '../../utils/theme.dart';
 
 class ChatScreen extends StatefulWidget {
-  final Match match;
+  final Map<String, dynamic> match;
 
   const ChatScreen({super.key, required this.match});
 
@@ -30,7 +29,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final chatService = Provider.of<ChatService>(context, listen: false);
     
     if (authService.token != null) {
-      await chatService.fetchMessages(authService.token!, widget.match.id);
+      await chatService.fetchMessages(authService.token!, widget.match['id']);
       _scrollToBottom();
     }
   }
@@ -57,7 +56,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (authService.token != null) {
       await chatService.sendMessage(
         token: authService.token!,
-        matchId: widget.match.id,
+        matchId: widget.match['id'],
         content: content,
       );
       _scrollToBottom();
@@ -74,7 +73,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
-    final otherUser = widget.match.getOtherUser(authService.currentUser!.id);
+    final otherUser = widget.match['other_user'];
 
     return Scaffold(
       appBar: AppBar(
@@ -89,7 +88,14 @@ class _ChatScreenState extends State<ChatScreen> {
             CircleAvatar(
               radius: 20,
               backgroundColor: AppTheme.primaryColor.withOpacity(0.2),
-              child: const Icon(Icons.person, color: AppTheme.primaryColor),
+              backgroundImage: otherUser['profile_images'] != null && 
+                              (otherUser['profile_images'] as List).isNotEmpty
+                  ? NetworkImage((otherUser['profile_images'] as List)[0])
+                  : null,
+              child: otherUser['profile_images'] == null || 
+                     (otherUser['profile_images'] as List).isEmpty
+                  ? const Icon(Icons.person, color: AppTheme.primaryColor)
+                  : null,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -97,7 +103,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    otherUser.name,
+                    otherUser['name'] ?? 'Unknown',
                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                   Text(
@@ -115,7 +121,7 @@ class _ChatScreenState extends State<ChatScreen> {
           Expanded(
             child: Consumer<ChatService>(
               builder: (context, chatService, child) {
-                final messages = chatService.getMessagesForMatch(widget.match.id);
+                final messages = chatService.getMessagesForMatch(widget.match['id']);
 
                 if (messages.isEmpty) {
                   return Center(
@@ -132,7 +138,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           child: const Icon(Icons.favorite, color: Colors.white, size: 40),
                         ),
                         const SizedBox(height: 16),
-                        Text('Say Hi to ${otherUser.name}!', style: Theme.of(context).textTheme.headlineMedium),
+                        Text('Say Hi to ${otherUser['name']}!', style: Theme.of(context).textTheme.headlineMedium),
                         const SizedBox(height: 8),
                         Text('Start your conversation', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppTheme.textSecondary)),
                       ],

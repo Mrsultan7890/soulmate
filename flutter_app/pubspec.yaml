@@ -37,6 +37,7 @@ dependencies:
   # Image Handling
   image_picker: ^1.0.5
   flutter_image_compress: ^2.1.0
+  camera: ^0.10.5
   
   # Swipe Cards
   flutter_card_swiper: ^6.0.0

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/user_service.dart';
+import '../../services/location_service.dart';
 import '../../utils/theme.dart';
 import '../../utils/image_picker_helper.dart';
 
@@ -17,7 +18,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _nameController;
   late TextEditingController _ageController;
   late TextEditingController _bioController;
-  late TextEditingController _locationController;
   String? _selectedIntent;
   List<String> _selectedInterests = [];
   bool _isUploading = false;
@@ -37,7 +37,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _nameController = TextEditingController(text: user?.name);
     _ageController = TextEditingController(text: user?.age?.toString());
     _bioController = TextEditingController(text: user?.bio);
-    _locationController = TextEditingController(text: user?.location);
     _selectedIntent = user?.relationshipIntent;
     _selectedInterests = List.from(user?.interests ?? []);
   }
@@ -47,7 +46,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _nameController.dispose();
     _ageController.dispose();
     _bioController.dispose();
-    _locationController.dispose();
     super.dispose();
   }
 
@@ -64,7 +62,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       name: _nameController.text.trim(),
       age: int.tryParse(_ageController.text),
       bio: _bioController.text.trim(),
-      location: _locationController.text.trim(),
       interests: _selectedInterests,
       relationshipIntent: _selectedIntent,
     );
@@ -154,10 +151,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   decoration: const InputDecoration(labelText: 'Bio', prefixIcon: Icon(Icons.edit), hintText: 'Tell us about yourself...'),
                 ),
                 const SizedBox(height: 16),
-                TextFormField(
-                  controller: _locationController,
-                  decoration: const InputDecoration(labelText: 'Location', prefixIcon: Icon(Icons.location_on)),
-                ),
+                _buildLocationDisplay(),
                 const SizedBox(height: 24),
                 Text('Relationship Intent', style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: 12),
@@ -267,10 +261,26 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   width: 100,
                   margin: const EdgeInsets.only(right: 8),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.image, color: AppTheme.primaryColor),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(
+                      user!.profileImages[index],
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        color: AppTheme.primaryColor.withOpacity(0.2),
+                        child: const Icon(Icons.image, color: AppTheme.primaryColor),
+                      ),
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          color: AppTheme.primaryColor.withOpacity(0.1),
+                          child: const Center(child: CircularProgressIndicator()),
+                        );
+                      },
+                    ),
+                  ),
                 );
               },
             ),
@@ -280,7 +290,72 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  void _showInterestsDialog() {
+  Widget _buildLocationDisplay() {
+    return Consumer<LocationService>(
+      builder: (context, locationService, child) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.gps_fixed, color: AppTheme.primaryColor),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Current Location (GPS)',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      locationService.currentAddress ?? 'Getting location...',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (locationService.isTracking)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.successColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check_circle, color: AppTheme.successColor, size: 12),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Live GPS',
+                        style: TextStyle(
+                          color: AppTheme.successColor,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
     final availableInterests = ['Travel', 'Music', 'Movies', 'Sports', 'Reading', 'Cooking', 'Photography', 'Gaming', 'Fitness', 'Art', 'Dancing', 'Yoga', 'Hiking', 'Swimming', 'Coffee', 'Wine', 'Foodie', 'Netflix', 'Beach', 'Mountains', 'Dogs', 'Cats'];
     
     showDialog(

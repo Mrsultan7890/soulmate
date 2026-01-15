@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/chat_service.dart';
+import '../../services/location_service.dart';
+import '../../services/user_service.dart';
 import '../../utils/theme.dart';
 import 'discover_screen.dart';
 import '../matches/matches_screen.dart';
@@ -28,9 +30,16 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     final authService = Provider.of<AuthService>(context, listen: false);
     final chatService = Provider.of<ChatService>(context, listen: false);
+    final locationService = Provider.of<LocationService>(context, listen: false);
+    final userService = Provider.of<UserService>(context, listen: false);
     
     if (authService.currentUser != null) {
       chatService.connectWebSocket(authService.currentUser!.id);
+      
+      // Start automatic GPS tracking
+      locationService.startLocationTracking(authService, userService).catchError((error) {
+        print('Failed to start location tracking: $error');
+      });
     }
   }
 

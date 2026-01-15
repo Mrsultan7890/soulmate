@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:timeago/timeago.dart' as timeago;
 import '../../services/auth_service.dart';
 import '../../services/match_service.dart';
 import '../../utils/theme.dart';
-import '../../widgets/unread_badge.dart';
 import '../chat/chat_screen.dart';
 
 class MatchesScreen extends StatefulWidget {
@@ -38,10 +36,10 @@ class _MatchesScreenState extends State<MatchesScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              _buildAppBar(),
+              _buildHeader(),
               Expanded(
-                child: Consumer2<MatchService, AuthService>(
-                  builder: (context, matchService, authService, child) {
+                child: Consumer<MatchService>(
+                  builder: (context, matchService, child) {
                     if (matchService.isLoading) {
                       return const Center(child: CircularProgressIndicator());
                     }
@@ -50,18 +48,13 @@ class _MatchesScreenState extends State<MatchesScreen> {
                       return _buildEmptyState();
                     }
 
-                    return RefreshIndicator(
-                      onRefresh: _loadMatches,
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: matchService.matches.length,
-                        itemBuilder: (context, index) {
-                          final match = matchService.matches[index];
-                          final otherUser = match.getOtherUser(authService.currentUser!.id);
-                          
-                          return _buildMatchCard(match, otherUser);
-                        },
-                      ),
+                    return ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: matchService.matches.length,
+                      itemBuilder: (context, index) {
+                        final match = matchService.matches[index];
+                        return _buildMatchCard(match);
+                      },
                     );
                   },
                 ),
@@ -73,7 +66,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
     );
   }
 
-  Widget _buildAppBar() {
+  Widget _buildHeader() {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -91,6 +84,11 @@ class _MatchesScreenState extends State<MatchesScreen> {
                 Text('Matches', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
               ],
             ),
+          ),
+          const Spacer(),
+          IconButton(
+            onPressed: _loadMatches,
+            icon: const Icon(Icons.refresh, color: AppTheme.primaryColor),
           ),
         ],
       ),
@@ -114,92 +112,84 @@ class _MatchesScreenState extends State<MatchesScreen> {
           const SizedBox(height: 24),
           Text('No matches yet', style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 8),
-          Text('Start swiping to find your match', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppTheme.textSecondary)),
+          Text('Keep swiping to find your perfect match!', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppTheme.textSecondary)),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(Icons.search),
+            label: const Text('Start Swiping'),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildMatchCard(match, otherUser) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => ChatScreen(match: match)),
-        );
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
+  Widget _buildMatchCard(dynamic match) {
+    final otherUser = match['other_user'];
+    final matchId = match['id'];
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        leading: CircleAvatar(
+          radius: 30,
+          backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+          backgroundImage: otherUser['profile_images'] != null && 
+                          (otherUser['profile_images'] as List).isNotEmpty
+              ? NetworkImage((otherUser['profile_images'] as List)[0])
+              : null,
+          child: otherUser['profile_images'] == null || 
+                 (otherUser['profile_images'] as List).isEmpty
+              ? const Icon(Icons.person, color: AppTheme.primaryColor)
+              : null,
         ),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 30,
-              backgroundColor: AppTheme.primaryColor.withOpacity(0.2),
-              child: otherUser.profileImages.isEmpty
-                  ? const Icon(Icons.person, color: AppTheme.primaryColor)
-                  : null,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        otherUser.name,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      if (otherUser.isVerified) ...[
-                        const SizedBox(width: 4),
-                        const Icon(Icons.verified, color: AppTheme.successColor, size: 16),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    match.lastMessage ?? 'Start chatting now!',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppTheme.textSecondary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                if (match.lastMessageTime != null)
-                  Text(timeago.format(match.lastMessageTime!), style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const UnreadBadge(count: 0),
-                    const SizedBox(width: 8),
-                    const Icon(Icons.chevron_right, color: AppTheme.textSecondary),
-                  ],
-                ),
-              ],
-            ),
-          ],
+        title: Text(
+          '${otherUser['name']}, ${otherUser['age'] ?? ''}',
+          style: const TextStyle(fontWeight: FontWeight.w600),
         ),
+        subtitle: Text(
+          otherUser['bio'] ?? 'No bio available',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: Container(
+          decoration: const BoxDecoration(
+            gradient: AppTheme.primaryGradient,
+            shape: BoxShape.circle,
+          ),
+          child: IconButton(
+            onPressed: () => _openChat(matchId, otherUser),
+            icon: const Icon(Icons.chat, color: Colors.white),
+          ),
+        ),
+        onTap: () => _openChat(matchId, otherUser),
+      ),
+    );
+  }
+
+  void _openChat(int matchId, Map<String, dynamic> otherUser) {
+    // Create a simplified match object for chat
+    final matchForChat = {
+      'id': matchId,
+      'other_user': otherUser,
+    };
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChatScreen(match: matchForChat),
       ),
     );
   }

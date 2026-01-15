@@ -93,32 +93,37 @@ async def send_message(
                 detail="Match not found"
             )
         
-        # Anti-scam analysis
-        scam_analysis = AntiScamService.analyze_message(
-            message.content, current_user["id"], match_id
-        )
+        # Anti-scam check for phone numbers and social media
+        content = message.content.lower()
+        blocked_patterns = [
+            # Phone patterns
+            r'\b\d{10}\b',  # 10 digit numbers
+            r'\b\d{3}[-.]\d{3}[-.]\d{4}\b',  # xxx-xxx-xxxx
+            r'\+\d{1,3}\s?\d{10}',  # +91 xxxxxxxxxx
+            # Social media
+            'instagram', 'insta', 'ig:', '@',
+            'whatsapp', 'telegram', 'snapchat',
+            'facebook', 'twitter', 'tiktok'
+        ]
         
-        # Insert message with scam flags
+        import re
+        for pattern in blocked_patterns:
+            if re.search(pattern, content):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Messages containing phone numbers or social media handles are not allowed for safety reasons."
+                )
+        
+        # Insert message
         await db.execute("""
-            INSERT INTO messages (match_id, sender_id, content, message_type, is_flagged, risk_score)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO messages (match_id, sender_id, content, message_type)
+            VALUES (?, ?, ?, ?)
         """, (
             match_id, 
             current_user["id"], 
             message.content, 
-            message.message_type,
-            scam_analysis['is_suspicious'],
-            scam_analysis['risk_score']
+            message.message_type
         ))
-        
-        # Auto-flag user if high risk
-        if scam_analysis['action_required']:
-            await AntiScamService.flag_user(
-                current_user["id"],
-                "Suspicious message content",
-                None,  # System flag
-                scam_analysis
-            )
         
         # Get the created message
         created_message = await db.fetchone("""
@@ -144,16 +149,12 @@ async def send_message(
             sender_name=msg_dict["sender_name"]
         )
         
-        # Send via WebSocket to other user
-        other_user_id = match["user1_id"] if match["user2_id"] == current_user["id"] else match["user2_id"]
-        await manager.send_message_to_user(other_user_id, {
-            "type": "new_message",
-            "message": new_message.dict()
-        })
-        
         return new_message
         
+    except HTTPException:
+        raise
     except Exception as e:
+        print(f"Send message error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to send message: {str(e)}"

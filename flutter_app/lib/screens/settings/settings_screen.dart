@@ -2,6 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import '../../utils/theme.dart';
+import '../profile/edit_profile_screen.dart';
+import 'change_password_screen.dart';
+import 'blocked_users_screen.dart';
+import 'safety_center_screen.dart';
+import 'notification_settings_screen.dart';
+import 'about_screen.dart';
+import 'privacy_policy_screen.dart';
+import 'help_support_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -16,28 +24,39 @@ class SettingsScreen extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           children: [
             _buildSection(context, 'Account', [
-              _buildTile(Icons.person, 'Edit Profile', () {}),
-              _buildTile(Icons.lock, 'Change Password', () {}),
-              _buildTile(Icons.email, 'Email Preferences', () {}),
+              _buildTile(Icons.person, 'Edit Profile', () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const EditProfileScreen()));
+              }),
+              _buildTile(Icons.lock, 'Change Password', () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const ChangePasswordScreen()));
+              }),
+              _buildTile(Icons.notifications, 'Notifications', () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationSettingsScreen()));
+              }),
             ]),
             const SizedBox(height: 16),
-            _buildSection(context, 'Privacy', [
-              _buildTile(Icons.visibility_off, 'Photo Privacy', () {}),
-              _buildTile(Icons.block, 'Blocked Users', () {}),
-              _buildTile(Icons.security, 'Safety Center', () {}),
-            ]),
-            const SizedBox(height: 16),
-            _buildSection(context, 'Notifications', [
-              _buildSwitchTile('New Matches', true, (val) {}),
-              _buildSwitchTile('Messages', true, (val) {}),
-              _buildSwitchTile('Likes', false, (val) {}),
+            _buildSection(context, 'Privacy & Safety', [
+              _buildTile(Icons.block, 'Blocked Users', () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const BlockedUsersScreen()));
+              }),
+              _buildTile(Icons.security, 'Safety Center', () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const SafetyCenterScreen()));
+              }),
             ]),
             const SizedBox(height: 16),
             _buildSection(context, 'About', [
-              _buildTile(Icons.info, 'About HeartLink', () {}),
-              _buildTile(Icons.privacy_tip, 'Privacy Policy', () {}),
-              _buildTile(Icons.description, 'Terms of Service', () {}),
-              _buildTile(Icons.help, 'Help & Support', () {}),
+              _buildTile(Icons.info, 'About HeartLink', () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const AboutScreen()));
+              }),
+              _buildTile(Icons.privacy_tip, 'Privacy Policy', () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const PrivacyPolicyScreen()));
+              }),
+              _buildTile(Icons.description, 'Terms of Service', () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const PrivacyPolicyScreen()));
+              }),
+              _buildTile(Icons.help, 'Help & Support', () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const HelpSupportScreen()));
+              }),
             ]),
             const SizedBox(height: 16),
             _buildSection(context, 'Account Actions', [

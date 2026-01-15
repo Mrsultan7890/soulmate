@@ -97,7 +97,7 @@ class ProfileScreen extends StatelessWidget {
       height: 120,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: AppTheme.primaryGradient,
+        gradient: imageUrl == null || imageUrl.isEmpty ? AppTheme.primaryGradient : null,
         boxShadow: [
           BoxShadow(
             color: AppTheme.primaryColor.withOpacity(0.3),
@@ -106,7 +106,33 @@ class ProfileScreen extends StatelessWidget {
           ),
         ],
       ),
-      child: const Icon(Icons.person, size: 60, color: Colors.white),
+      child: imageUrl == null || imageUrl.isEmpty
+          ? const Icon(Icons.person, size: 60, color: Colors.white)
+          : ClipOval(
+              child: Image.network(
+                imageUrl,
+                width: 120,
+                height: 120,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: AppTheme.primaryGradient,
+                  ),
+                  child: const Icon(Icons.person, size: 60, color: Colors.white),
+                ),
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppTheme.primaryColor.withOpacity(0.1),
+                    ),
+                    child: const Center(child: CircularProgressIndicator()),
+                  );
+                },
+              ),
+            ),
     );
   }
 

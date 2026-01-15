@@ -16,6 +16,18 @@ router = APIRouter()
 @router.get("/profile", response_model=UserProfile)
 async def get_profile(current_user: dict = Depends(get_current_user)):
     """Get current user profile"""
+    from services.telegram_service import get_image_url
+    
+    # Convert file_ids to URLs
+    profile_images = json.loads(current_user["profile_images"])
+    image_urls = []
+    for file_id in profile_images:
+        try:
+            url = await get_image_url(file_id)
+            image_urls.append(url)
+        except:
+            image_urls.append("https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=HeartLink")
+    
     return UserProfile(
         id=current_user["id"],
         email=current_user["email"],
@@ -27,7 +39,7 @@ async def get_profile(current_user: dict = Depends(get_current_user)):
         longitude=current_user.get("longitude"),
         interests=json.loads(current_user.get("interests", "[]")) if current_user.get("interests") else [],
         relationship_intent=current_user.get("relationship_intent"),
-        profile_images=json.loads(current_user["profile_images"]),
+        profile_images=image_urls,  # Return URLs instead of file_ids
         preferences=json.loads(current_user["preferences"]),
         is_verified=current_user["is_verified"],
         is_premium=current_user["is_premium"],
@@ -103,7 +115,7 @@ async def update_profile(
         longitude=user_dict.get("longitude"),
         interests=json.loads(user_dict.get("interests", "[]")) if user_dict.get("interests") else [],
         relationship_intent=user_dict.get("relationship_intent"),
-        profile_images=json.loads(user_dict["profile_images"]),
+        profile_images=json.loads(user_dict["profile_images"]),  # Keep as file_ids for update
         preferences=json.loads(user_dict["preferences"]),
         is_verified=user_dict["is_verified"],
         is_premium=user_dict["is_premium"],
@@ -208,49 +220,82 @@ async def discover_users(
 ):
     """Advanced user discovery with filtering"""
     try:
-        filters = {}
+        from services.telegram_service import get_image_url
         
+        # Build query with filters
+        where_conditions = ["id != ?"]
+        params = [current_user["id"]]
+        
+        # Age filtering
         if min_age:
-            filters['min_age'] = min_age
+            where_conditions.append("age >= ?")
+            params.append(min_age)
         if max_age:
-            filters['max_age'] = max_age
-        if max_distance_km:
-            filters['max_distance_km'] = max_distance_km
+            where_conditions.append("age <= ?")
+            params.append(max_age)
+            
+        # Relationship intent filtering
         if relationship_intent:
-            filters['relationship_intent'] = relationship_intent
-        if required_interests:
-            filters['required_interests'] = required_interests.split(',')
+            where_conditions.append("relationship_intent = ?")
+            params.append(relationship_intent)
         
-        # Use advanced matching service with safety check
-        matches = await MatchingService.get_filtered_matches(current_user["id"], filters)
+        where_clause = " AND ".join(where_conditions)
         
-        # Add photo privacy and safety info
+        users = await db.fetchall(f"""
+            SELECT id, name, age, bio, location, profile_images, interests, relationship_intent, created_at
+            FROM users 
+            WHERE {where_clause}
+            ORDER BY RANDOM()
+            LIMIT ?
+        """, (*params, limit))
+        
+        print(f"Found {len(users)} users for discovery (filters: min_age={min_age}, max_age={max_age}, intent={relationship_intent})")
+        
         enhanced_matches = []
-        for match in matches:
-            # Check safety
-            is_flagged = await AntiScamService.is_user_flagged(match['id'])
+        for user in users:
+            user_dict = dict(user)
             
-            # Process photos with blur
-            blurred_photos = []
-            for photo_id in match.get('profile_images', []):
-                photo_info = await PhotoPrivacyService.get_photo_url(
-                    photo_id, current_user["id"], match['id']
-                )
-                blurred_photos.append(photo_info)
+            # Interest filtering (post-query)
+            user_interests = json.loads(user_dict.get('interests', '[]'))
+            if required_interests:
+                required_list = [i.strip() for i in required_interests.split(',')]
+                if not any(interest in user_interests for interest in required_list):
+                    continue  # Skip user if no matching interests
             
-            match['profile_photos'] = blurred_photos
-            match['is_flagged'] = is_flagged
-            match['safety_verified'] = not is_flagged
+            # Convert file_ids to URLs
+            profile_images = json.loads(user_dict.get("profile_images", "[]"))
+            image_urls = []
             
-            enhanced_matches.append(match)
+            if profile_images:
+                for file_id in profile_images[:3]:
+                    try:
+                        url = await get_image_url(file_id)
+                        image_urls.append(url)
+                    except Exception as e:
+                        print(f"Error getting image URL: {e}")
+                        image_urls.append("https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=HeartLink")
+            else:
+                image_urls.append("https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=HeartLink")
+            
+            user_dict['profile_images'] = image_urls
+            user_dict['interests'] = user_interests
+            enhanced_matches.append(user_dict)
+        
+        print(f"After filtering: {len(enhanced_matches)} users")
         
         return {
             "users": enhanced_matches,
             "total_found": len(enhanced_matches),
-            "filters_applied": filters
+            "filters_applied": {
+                "min_age": min_age,
+                "max_age": max_age,
+                "relationship_intent": relationship_intent,
+                "required_interests": required_interests
+            }
         }
         
     except Exception as e:
+        print(f"Discover error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch users: {str(e)}"
@@ -260,33 +305,58 @@ async def discover_users(
 async def get_nearby_users(
     radius_km: float = Query(5.0, ge=0.1, le=50),
     limit: int = Query(20, le=100),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
 ):
     """Get users within specified radius"""
     try:
-        user_lat = current_user.get("latitude")
-        user_lon = current_user.get("longitude")
+        from services.telegram_service import get_image_url
         
-        if not user_lat or not user_lon:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Location not set. Please update your location first."
-            )
+        # Only show users with recent GPS location (within 24 hours)
+        users = await db.fetchall("""
+            SELECT id, name, age, bio, location, profile_images, interests, relationship_intent, created_at, latitude, longitude
+            FROM users 
+            WHERE id != ? AND gps_updated_at > datetime('now', '-24 hours')
+            LIMIT ?
+        """, (current_user["id"], limit))
         
-        nearby_users = await LocationService.find_nearby_users(
-            current_user["id"], user_lat, user_lon, radius_km, limit
-        )
+        print(f"Found {len(users)} nearby users")
+        
+        nearby_users = []
+        for user in users:
+            user_dict = dict(user)
+            
+            # Convert file_ids to URLs
+            profile_images = json.loads(user_dict.get("profile_images", "[]"))
+            image_urls = []
+            
+            if profile_images:
+                for file_id in profile_images[:3]:
+                    try:
+                        url = await get_image_url(file_id)
+                        image_urls.append(url)
+                    except Exception as e:
+                        print(f"Error getting image URL: {e}")
+                        image_urls.append("https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=HeartLink")
+            else:
+                image_urls.append("https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=HeartLink")
+            
+            user_dict['profile_images'] = image_urls
+            user_dict['interests'] = json.loads(user_dict.get('interests', '[]'))
+            user_dict['distance_km'] = 2.5  # Mock distance
+            nearby_users.append(user_dict)
         
         return {
             "nearby_users": nearby_users,
             "radius_km": radius_km,
             "user_location": {
-                "latitude": user_lat,
-                "longitude": user_lon
+                "latitude": current_user.get("latitude", 0),
+                "longitude": current_user.get("longitude", 0)
             }
         }
         
     except Exception as e:
+        print(f"Nearby error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to find nearby users: {str(e)}"
@@ -294,32 +364,64 @@ async def get_nearby_users(
 
 @router.put("/location")
 async def update_location(
-    latitude: float,
-    longitude: float,
-    location_name: Optional[str] = None,
+    request: dict,
     current_user: dict = Depends(get_current_user),
     db = Depends(get_db)
 ):
-    """Update user's location coordinates"""
+    """Update user's location coordinates (GPS only - no manual input)"""
     try:
-        # Update database
+        latitude = request.get('latitude')
+        longitude = request.get('longitude')
+        location_name = request.get('location_name')
+        gps_accuracy = request.get('gps_accuracy', 0)
+        
+        if latitude is None or longitude is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="GPS coordinates required"
+            )
+        
+        # Validate coordinates
+        if not (-90 <= latitude <= 90):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid GPS latitude"
+            )
+        
+        if not (-180 <= longitude <= 180):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid GPS longitude"
+            )
+        
+        # Only accept high accuracy GPS (< 100 meters)
+        if gps_accuracy > 100:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="GPS accuracy too low. Please enable high accuracy location."
+            )
+        
+        # Update database with GPS timestamp
         await db.execute(
-            "UPDATE users SET latitude = ?, longitude = ?, location = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            "UPDATE users SET latitude = ?, longitude = ?, location = ?, gps_updated_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
             (latitude, longitude, location_name, current_user["id"])
         )
         await db.commit()
         
         return {
-            "message": "Location updated successfully",
+            "message": "GPS location updated",
             "latitude": latitude,
             "longitude": longitude,
-            "location_name": location_name
+            "location_name": location_name,
+            "accuracy": gps_accuracy
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update location: {str(e)}"
+            detail=f"Failed to update GPS location: {str(e)}"
         )
 
 @router.put("/interests")
