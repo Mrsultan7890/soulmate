@@ -48,13 +48,13 @@ jobs:
         run: flutter build appbundle --release
 
       - name: Upload APK
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: heartlink-android-apk
           path: flutter_app/build/app/outputs/flutter-apk/app-release.apk
 
       - name: Upload App Bundle
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: heartlink-android-bundle
           path: flutter_app/build/app/outputs/bundle/release/app-release.aab
@@ -89,7 +89,7 @@ jobs:
           zip -r heartlink.ipa Payload
 
       - name: Upload IPA
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: heartlink-ios-ipa
           path: flutter_app/build/ios/iphoneos/heartlink.ipa
@@ -101,17 +101,17 @@ jobs:
     
     steps:
       - name: Download Android APK
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: heartlink-android-apk
 
       - name: Download Android Bundle
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: heartlink-android-bundle
 
       - name: Download iOS IPA
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: heartlink-ios-ipa
 
