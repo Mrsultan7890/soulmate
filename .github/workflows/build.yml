@@ -35,8 +35,13 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
+      - name: Setup Gradle
+        run: |
+          cd android
+          ./gradlew --version || true
+
       - name: Build APK
-        run: flutter build apk --release
+        run: flutter build apk --release --no-shrink
 
       - name: Build App Bundle
         run: flutter build appbundle --release
