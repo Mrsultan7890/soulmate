@@ -210,7 +210,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           }),
           _buildActionButton(Icons.star, AppTheme.secondaryColor, () {
             // Super like functionality
-            _controller.swipeUp();
+            _controller.swipeTop();
           }),
           _buildActionButton(Icons.favorite, AppTheme.primaryColor, () {
             _controller.swipeRight();

@@ -94,6 +94,32 @@ class UserService extends ChangeNotifier {
     }
   }
 
+  Future<void> fetchDiscoverUsers(String token) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConstants.baseUrl}${ApiConstants.discover}'),
+        headers: ApiConstants.getHeaders(token: token),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        _discoverUsers = (data['users'] as List)
+            .map((user) => User.fromJson(user))
+            .toList();
+      } else {
+        _error = 'Failed to fetch users';
+      }
+    } catch (e) {
+      _error = 'Network error: ${e.toString()}';
+    }
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
   Future<void> fetchAdvancedDiscoverUsers(
     String token, {
     Map<String, dynamic>? filters,

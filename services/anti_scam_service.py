@@ -3,6 +3,7 @@ from typing import List, Dict, Optional
 from config.database import db
 import json
 from datetime import datetime
+from services.telegram_service import telegram_service
 
 class AntiScamService:
     
@@ -60,12 +61,26 @@ class AntiScamService:
             flags.append('rapid_messaging')
             risk_score += 10
         
-        return {
+        result = {
             'is_suspicious': risk_score >= 25,
             'risk_score': risk_score,
             'flags': flags,
             'action_required': risk_score >= 50
         }
+        
+        # Send alert for high-risk messages
+        if risk_score >= 50:
+            import asyncio
+            asyncio.create_task(telegram_service.send_suspicious_activity_alert({
+                'user_id': sender_id,
+                'activity_type': 'suspicious_message',
+                'risk_score': risk_score,
+                'flags': flags,
+                'message_content': content[:200],  # First 200 chars
+                'auto_action': 'message_flagged'
+            }))
+        
+        return result
     
     @staticmethod
     async def _is_too_fast_response(sender_id: int, match_id: int) -> bool:
@@ -98,6 +113,14 @@ class AntiScamService:
         """, (user_id,))
         
         await db.commit()
+        
+        # Send Telegram notification to admin
+        await telegram_service.send_report_notification({
+            'reported_user_id': user_id,
+            'reporter_id': reported_by,
+            'reason': reason,
+            'evidence': evidence
+        })
     
     @staticmethod
     async def get_user_flags(user_id: int) -> List[Dict]:

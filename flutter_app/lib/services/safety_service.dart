@@ -60,6 +60,29 @@ class SafetyService extends ChangeNotifier {
     return _safetyTips.where((tip) => tip.category == category).toList();
   }
 
+  Future<bool> reportUser({
+    required String token,
+    required int reportedUserId,
+    required String reason,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConstants.baseUrl}${ApiConstants.reportUser}'),
+        headers: ApiConstants.getHeaders(token: token),
+        body: jsonEncode({
+          'reported_user_id': reportedUserId,
+          'reason': reason,
+        }),
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      _error = 'Failed to report user: ${e.toString()}';
+      notifyListeners();
+      return false;
+    }
+  }
+
   void clearError() {
     _error = null;
     notifyListeners();

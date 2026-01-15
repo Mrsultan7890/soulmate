@@ -1,23 +1,27 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from routes.auth import get_current_user
 from services.anti_scam_service import AntiScamService
 
 router = APIRouter()
 
+class ReportUserRequest(BaseModel):
+    reported_user_id: int
+    reason: str
+    evidence: dict = {}
+
 @router.post("/report-user")
 async def report_user(
-    reported_user_id: int,
-    reason: str,
-    evidence: dict = {},
+    request: ReportUserRequest,
     current_user: dict = Depends(get_current_user)
 ):
     """Report a user for suspicious behavior"""
     try:
         await AntiScamService.flag_user(
-            reported_user_id,
-            reason,
+            request.reported_user_id,
+            request.reason,
             current_user["id"],
-            evidence
+            request.evidence
         )
         
         return {"message": "User reported successfully"}

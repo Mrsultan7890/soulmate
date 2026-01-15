@@ -42,6 +42,7 @@ class ApiConstants {
   // Safety Endpoints
   static const String safetyTips = '/api/safety-tips/safety-tips';
   static const String safetyResources = '/api/safety-tips/safety-resources';
+  static const String reportUser = '/api/safety/report-user';
   
   // Headers
   static Map<String, String> getHeaders({String? token}) {
