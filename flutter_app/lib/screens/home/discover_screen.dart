@@ -202,9 +202,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildActionButton(Icons.close, AppTheme.errorColor, () => _controller.swipe(CardSwiperDirection.left)),
+          _buildActionButton(Icons.close, AppTheme.errorColor, () => _controller.swipe()),
           _buildActionButton(Icons.star, AppTheme.secondaryColor, () {}),
-          _buildActionButton(Icons.favorite, AppTheme.primaryColor, () => _controller.swipe(CardSwiperDirection.right)),
+          _buildActionButton(Icons.favorite, AppTheme.primaryColor, () => _controller.swipe()),
         ],
       ),
     );

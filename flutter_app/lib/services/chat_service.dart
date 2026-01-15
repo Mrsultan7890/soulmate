@@ -6,7 +6,7 @@ import '../models/match.dart';
 import '../utils/api_constants.dart';
 
 class ChatService extends ChangeNotifier {
-  Map<int, List<Message>> _messagesByMatch = {};
+  final Map<int, List<Message>> _messagesByMatch = {};
   WebSocketChannel? _channel;
   bool _isLoading = false;
   String? _error;
