@@ -171,14 +171,15 @@ class AuthService extends ChangeNotifier {
         
         await _saveAuthData();
         
-        // Save FCM token
+        // Save FCM token to backend
         try {
-          final fcmToken = FCMService.fcmToken;
+          final fcmToken = await FCMService.initialize();
           if (fcmToken != null && _token != null) {
             await FCMService.saveFCMToken(fcmToken, _token!);
+            print('✅ FCM token saved after login');
           }
         } catch (e) {
-          print('FCM save failed: $e');
+          print('⚠️ FCM token save failed: $e');
         }
         
         _isLoading = false;

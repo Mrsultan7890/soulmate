@@ -54,6 +54,26 @@ class UserUpdate(BaseModel):
     age: Optional[int] = None
     interests: Optional[List[str]] = None
     gender: Optional[str] = None
+    location: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    job_title: Optional[str] = None
+    company: Optional[str] = None
+    education_level: Optional[str] = None
+    education_details: Optional[str] = None
+    height: Optional[int] = None
+    body_type: Optional[str] = None
+    smoking: Optional[str] = None
+    drinking: Optional[str] = None
+    diet_preference: Optional[str] = None
+    religion: Optional[str] = None
+    caste: Optional[str] = None
+    mother_tongue: Optional[str] = None
+    gym_frequency: Optional[str] = None
+    travel_frequency: Optional[str] = None
+    relationship_intent: Optional[str] = None
+    preferences: Optional[dict] = None
+    profile_prompts: Optional[dict] = None
 
 class ImageUpload(BaseModel):
     telegram_file_id: str  # Telegram file_id or base64 image

@@ -157,12 +157,19 @@ async def send_message(
         try:
             from services.fcm_notification_service import fcm_service
             receiver = await db.fetchone("SELECT fcm_token, name FROM users WHERE id = ?", (receiver_id,))
+            print(f"\n=== MESSAGE NOTIFICATION ===")
+            print(f"Receiver: {receiver}")
             if receiver and receiver['fcm_token']:
-                await fcm_service.send_message_notification(
+                print(f"Sending FCM to token: {receiver['fcm_token'][:20]}...")
+                result = await fcm_service.send_message_notification(
                     fcm_token=receiver['fcm_token'],
                     sender_name=current_user['name'],
                     message_content=message.content
                 )
+                print(f"FCM result: {result}")
+            else:
+                print(f"No FCM token for user {receiver_id}")
+            print(f"=== END MESSAGE NOTIFICATION ===")
         except Exception as e:
             print(f"FCM notification error: {e}")
         

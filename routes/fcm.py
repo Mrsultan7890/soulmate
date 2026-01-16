@@ -42,3 +42,42 @@ async def delete_fcm_token(
         return {"message": "FCM token deleted"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete FCM token: {str(e)}")
+
+@router.post("/test-notification")
+async def test_notification(
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """Test FCM notification for current user"""
+    try:
+        from services.fcm_notification_service import fcm_service
+        
+        user = await db.fetchone("SELECT fcm_token, name FROM users WHERE id = ?", (current_user["id"],))
+        
+        if not user or not user['fcm_token']:
+            return {
+                "success": False,
+                "message": "No FCM token found for user",
+                "user_id": current_user["id"],
+                "fcm_token": user['fcm_token'] if user else None
+            }
+        
+        result = await fcm_service.send_notification(
+            fcm_token=user['fcm_token'],
+            title="🔔 Test Notification",
+            body="Your notifications are working perfectly!",
+            data={'type': 'test'}
+        )
+        
+        return {
+            "success": result,
+            "message": "Notification sent" if result else "Failed to send notification",
+            "user_id": current_user["id"],
+            "fcm_token": user['fcm_token'][:20] + "..."
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Error: {str(e)}",
+            "user_id": current_user["id"]
+        }

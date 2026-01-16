@@ -66,11 +66,18 @@ async def swipe_user(
                     # Send FCM notification
                     from services.fcm_notification_service import fcm_service
                     other_user = await db.fetchone("SELECT fcm_token, name FROM users WHERE id = ?", (swipe.swiped_user_id,))
+                    print(f"\n=== MATCH NOTIFICATION ===")
+                    print(f"Other user: {other_user}")
                     if other_user and other_user['fcm_token']:
-                        await fcm_service.send_match_notification(
+                        print(f"Sending FCM to token: {other_user['fcm_token'][:20]}...")
+                        result = await fcm_service.send_match_notification(
                             fcm_token=other_user['fcm_token'],
                             matched_user_name=current_user['name']
                         )
+                        print(f"FCM result: {result}")
+                    else:
+                        print(f"No FCM token for user {swipe.swiped_user_id}")
+                    print(f"=== END MATCH NOTIFICATION ===")
                 else:
                     match_id = existing_match['id']
                     is_match = True
