@@ -209,11 +209,42 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> {
             'Verification Successful!',
             style: Theme.of(context).textTheme.titleLarge,
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Gender detected: $_detectedGender',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.textSecondary,
+          const SizedBox(height: 16),
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: _detectedGender == 'Male' 
+                    ? [Colors.blue.shade400, Colors.blue.shade600]
+                    : [Colors.pink.shade400, Colors.pink.shade600],
+              ),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              _detectedGender == 'Male' ? Icons.male : Icons.female,
+              size: 50,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            decoration: BoxDecoration(
+              color: _detectedGender == 'Male' 
+                  ? Colors.blue.shade50
+                  : Colors.pink.shade50,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              'Gender: $_detectedGender',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: _detectedGender == 'Male' 
+                    ? Colors.blue.shade700
+                    : Colors.pink.shade700,
+              ),
             ),
           ),
           const SizedBox(height: 16),
