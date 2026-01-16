@@ -6,6 +6,7 @@ import '../../widgets/photo_gallery_widget.dart';
 import '../../widgets/privacy_settings_widget.dart';
 import 'edit_profile_screen.dart';
 import '../settings/settings_screen.dart';
+import '../verification/face_verification_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -265,8 +266,9 @@ class ProfileScreen extends StatelessWidget {
       child: Column(
         children: [
           _buildSettingsTile(Icons.verified_user, 'Face Verification', () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Face verification coming soon!')),
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const FaceVerificationScreen()),
             );
           }),
           _buildSettingsTile(Icons.settings, 'Settings', () {
