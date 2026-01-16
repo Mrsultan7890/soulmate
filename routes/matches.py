@@ -59,6 +59,15 @@ async def swipe_user(
                     match_id = cursor.lastrowid
                     await db.commit()
                     is_match = True
+                    
+                    # Send FCM notification
+                    from services.fcm_notification_service import fcm_service
+                    other_user = await db.fetchone("SELECT fcm_token, name FROM users WHERE id = ?", (swipe.swiped_user_id,))
+                    if other_user and other_user['fcm_token']:
+                        await fcm_service.send_match_notification(
+                            fcm_token=other_user['fcm_token'],
+                            matched_user_name=current_user['name']
+                        )
                 else:
                     match_id = existing_match['id']
                     is_match = True

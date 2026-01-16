@@ -45,6 +45,11 @@ dependencies:
   # WebSocket & Real-time
   web_socket_channel: ^2.4.0
   
+  # Push Notifications
+  firebase_core: ^2.24.2
+  firebase_messaging: ^14.7.9
+  flutter_local_notifications: ^16.3.0
+  
   # Utils
   intl: ^0.18.1
   timeago: ^3.6.0
