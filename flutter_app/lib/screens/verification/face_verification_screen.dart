@@ -19,7 +19,8 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> {
   Map<String, dynamic>? _avatarData;
 
   Future<void> _capturePhoto() async {
-    final image = await ImagePickerHelper.pickImage(ImageSource.camera);
+    final picker = ImagePicker();
+    final image = await picker.pickImage(source: ImageSource.camera);
     if (image != null) {
       setState(() {
         _capturedImage = File(image.path);

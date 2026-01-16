@@ -60,3 +60,50 @@ async def send_message(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to send message: {str(e)}"
         )
+
+@router.delete("/message/{message_id}")
+async def delete_message(
+    message_id: int,
+    for_everyone: bool = False,
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """Delete message"""
+    try:
+        message = await db.fetchone(
+            "SELECT * FROM messages WHERE id = ?",
+            (message_id,)
+        )
+        
+        if not message:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Message not found"
+            )
+        
+        if message['sender_id'] != current_user["id"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Can only delete your own messages"
+            )
+        
+        if for_everyone:
+            await db.execute("DELETE FROM messages WHERE id = ?", (message_id,))
+        else:
+            # Mark as deleted for current user only
+            await db.execute(
+                "UPDATE messages SET deleted_for = ? WHERE id = ?",
+                (current_user["id"], message_id)
+            )
+        
+        await db.commit()
+        
+        return {"message": "Message deleted"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete message: {str(e)}"
+        )
