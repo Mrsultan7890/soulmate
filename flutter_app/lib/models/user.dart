@@ -1,6 +1,6 @@
 class User {
   final int id;
-  final String email;
+  final String? email;
   final String name;
   final int? age;
   final String? bio;
@@ -31,11 +31,11 @@ class User {
   final Map<String, dynamic> preferences;
   final bool isVerified;
   final bool isPremium;
-  final DateTime createdAt;
+  final DateTime? createdAt;
 
   User({
     required this.id,
-    required this.email,
+    this.email,
     required this.name,
     this.age,
     this.bio,
@@ -63,7 +63,7 @@ class User {
     this.preferences = const {},
     this.isVerified = false,
     this.isPremium = false,
-    required this.createdAt,
+    this.createdAt,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -103,7 +103,7 @@ class User {
       preferences: json['preferences'] ?? {},
       isVerified: json['is_verified'] ?? false,
       isPremium: json['is_premium'] ?? false,
-      createdAt: DateTime.parse(json['created_at']),
+      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
     );
   }
 
@@ -138,7 +138,7 @@ class User {
       'preferences': preferences,
       'is_verified': isVerified,
       'is_premium': isPremium,
-      'created_at': createdAt.toIso8601String(),
+      'created_at': createdAt?.toIso8601String(),
     };
   }
 

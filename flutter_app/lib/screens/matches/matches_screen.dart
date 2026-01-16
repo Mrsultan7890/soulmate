@@ -115,7 +115,10 @@ class _MatchesScreenState extends State<MatchesScreen> {
           Text('Keep swiping to find your perfect match!', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppTheme.textSecondary)),
           const SizedBox(height: 24),
           ElevatedButton.icon(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              // Switch to discover tab (index 0)
+              DefaultTabController.of(context).animateTo(0);
+            },
             icon: const Icon(Icons.search),
             label: const Text('Start Swiping'),
           ),

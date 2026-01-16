@@ -68,7 +68,7 @@ class LocationService:
         """Update user's location coordinates"""
         query = """
             UPDATE users 
-            SET latitude = ?, longitude = ?, location = ?, updated_at = CURRENT_TIMESTAMP
+            SET latitude = ?, longitude = ?, location = ?
             WHERE id = ?
         """
         await db.execute(query, (latitude, longitude, location_name, user_id))

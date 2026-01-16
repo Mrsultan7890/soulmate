@@ -97,11 +97,51 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Image uploaded successfully')),
             );
+          } else if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Failed to upload image'), backgroundColor: AppTheme.errorColor),
+            );
           }
         }
       }
-      setState(() => _isUploading = false);
+      if (mounted) setState(() => _isUploading = false);
     });
+  }
+
+  Future<void> _deleteImage(int index) async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final userService = Provider.of<UserService>(context, listen: false);
+    
+    if (authService.token == null) return;
+    
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Image'),
+        content: const Text('Are you sure you want to delete this image?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete', style: TextStyle(color: AppTheme.errorColor)),
+          ),
+        ],
+      ),
+    );
+    
+    if (confirmed == true) {
+      final success = await userService.deleteImage(authService.token!, index);
+      
+      if (success && mounted) {
+        await authService.getCurrentUser();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Image deleted successfully')),
+        );
+      }
+    }
   }
 
   @override
@@ -225,21 +265,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Widget _buildImageSection() {
     final user = Provider.of<AuthService>(context).currentUser;
+    final images = user?.profileImages ?? [];
     
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
       child: Column(
         children: [
-          Text('Profile Photos', style: Theme.of(context).textTheme.titleLarge),
+          Text('Profile Photos (${images.length}/6)', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 16),
           SizedBox(
             height: 100,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
-              itemCount: (user?.profileImages.length ?? 0) + 1,
+              itemCount: images.length < 6 ? images.length + 1 : 6,
               itemBuilder: (context, index) {
-                if (index == (user?.profileImages.length ?? 0)) {
+                if (index == images.length) {
                   return GestureDetector(
                     onTap: _isUploading ? null : _uploadImage,
                     child: Container(
@@ -257,30 +298,67 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   );
                 }
                 
-                return Container(
-                  width: 100,
-                  margin: const EdgeInsets.only(right: 8),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.network(
-                      user!.profileImages[index],
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        color: AppTheme.primaryColor.withOpacity(0.2),
-                        child: const Icon(Icons.image, color: AppTheme.primaryColor),
+                final imageUrl = images[index];
+                return Stack(
+                  children: [
+                    Container(
+                      width: 100,
+                      margin: const EdgeInsets.only(right: 8),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        color: AppTheme.primaryColor.withOpacity(0.1),
                       ),
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Container(
-                          color: AppTheme.primaryColor.withOpacity(0.1),
-                          child: const Center(child: CircularProgressIndicator()),
-                        );
-                      },
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            print('Image load error: $error');
+                            return Container(
+                              color: Colors.pink.shade100,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.broken_image, color: Colors.pink.shade300, size: 30),
+                                  const SizedBox(height: 4),
+                                  Text('Failed', style: TextStyle(color: Colors.pink.shade700, fontSize: 10)),
+                                ],
+                              ),
+                            );
+                          },
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Container(
+                              color: AppTheme.primaryColor.withOpacity(0.1),
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  value: loadingProgress.expectedTotalBytes != null
+                                      ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                      : null,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
                     ),
-                  ),
+                    Positioned(
+                      top: 4,
+                      right: 12,
+                      child: GestureDetector(
+                        onTap: () => _deleteImage(index),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.close, color: Colors.white, size: 16),
+                        ),
+                      ),
+                    ),
+                  ],
                 );
               },
             ),

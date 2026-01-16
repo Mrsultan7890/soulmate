@@ -189,6 +189,18 @@ async def login(user_login: UserLogin, db = Depends(get_db)):
 
 @router.get("/me", response_model=UserProfile)
 async def get_current_user_profile(current_user: dict = Depends(get_current_user)):
+    from services.telegram_service import get_image_url
+    
+    # Convert file_ids to URLs
+    profile_images = json.loads(current_user["profile_images"])
+    image_urls = []
+    for file_id in profile_images:
+        try:
+            url = await get_image_url(file_id)
+            image_urls.append(url)
+        except:
+            image_urls.append("https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=HeartLink")
+    
     return UserProfile(
         id=current_user["id"],
         email=current_user["email"],
@@ -200,7 +212,7 @@ async def get_current_user_profile(current_user: dict = Depends(get_current_user
         longitude=current_user.get("longitude"),
         interests=json.loads(current_user.get("interests", "[]")) if current_user.get("interests") else [],
         relationship_intent=current_user.get("relationship_intent"),
-        profile_images=json.loads(current_user["profile_images"]),
+        profile_images=image_urls,
         preferences=json.loads(current_user["preferences"]),
         is_verified=current_user["is_verified"],
         is_premium=current_user["is_premium"],

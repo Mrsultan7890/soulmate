@@ -5,7 +5,6 @@ import json
 from models.schemas import UserProfile, UserUpdate, ImageUpload
 from routes.auth import get_current_user
 from config.database import get_db
-from services.telegram_service import upload_image_to_telegram
 from services.location_service import LocationService
 from services.matching_service import MatchingService
 from services.photo_privacy_service import PhotoPrivacyService
@@ -18,6 +17,7 @@ router = APIRouter()
 @router.get("/profile", response_model=UserProfile)
 async def get_profile(current_user: dict = Depends(get_current_user)):
     """Get current user profile"""
+    from services.telegram_service import get_image_url
     from services.telegram_service import get_image_url
     
     # Convert file_ids to URLs
@@ -209,6 +209,66 @@ async def delete_profile_image(
             detail=f"Failed to delete image: {str(e)}"
         )
 
+@router.get("/discover")
+async def discover_users(
+    limit: int = Query(20, le=50),
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """Simple user discovery"""
+    try:
+        from services.telegram_service import get_image_url
+        
+        print(f"\n=== DISCOVER REQUEST ===")
+        print(f"Current user ID: {current_user['id']}")
+        print(f"Limit: {limit}")
+        
+        users = await db.fetchall("""
+            SELECT id, name, age, bio, location, profile_images, interests, relationship_intent
+            FROM users 
+            WHERE id != ? AND is_blocked = 0
+            LIMIT ?
+        """, (current_user["id"], limit))
+        
+        print(f"Found {len(users)} users in database")
+        
+        user_list = []
+        for user in users:
+            user_dict = dict(user)
+            print(f"Processing user: {user_dict['name']} (ID: {user_dict['id']})")
+            
+            # Convert file_ids to URLs
+            profile_images = json.loads(user_dict.get("profile_images", "[]"))
+            image_urls = []
+            
+            if profile_images:
+                print(f"  Found {len(profile_images)} images")
+                for file_id in profile_images[:3]:
+                    try:
+                        url = await get_image_url(file_id)
+                        image_urls.append(url)
+                        print(f"  Image URL: {url[:50]}...")
+                    except Exception as e:
+                        print(f"  Error getting image URL: {e}")
+                        image_urls.append("https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=HeartLink")
+            else:
+                print(f"  No images, using placeholder")
+                image_urls.append("https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=HeartLink")
+            
+            user_dict['profile_images'] = image_urls
+            user_dict['interests'] = json.loads(user_dict.get('interests', '[]'))
+            user_list.append(user_dict)
+        
+        print(f"Returning {len(user_list)} users")
+        print(f"=== END DISCOVER ===")
+        return {"users": user_list}
+        
+    except Exception as e:
+        print(f"\n!!! DISCOVER ERROR: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"users": []}
+
 @router.get("/discover-advanced")
 async def discover_users_advanced(
     filters: Dict = {},
@@ -382,7 +442,7 @@ async def update_location(
         
         # Update database with GPS timestamp
         await db.execute(
-            "UPDATE users SET latitude = ?, longitude = ?, location = ?, gps_updated_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            "UPDATE users SET latitude = ?, longitude = ?, location = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
             (latitude, longitude, location_name, current_user["id"])
         )
         await db.commit()

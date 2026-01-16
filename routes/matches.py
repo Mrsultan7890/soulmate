@@ -64,7 +64,6 @@ async def get_matches(
         for match in matches:
             match_dict = dict(match)
             
-            # Determine other user
             if match_dict["user1_id"] == current_user["id"]:
                 other_user_data = {
                     "id": match_dict["user2_id"],
@@ -82,15 +81,17 @@ async def get_matches(
                     "profile_images": match_dict["user1_images"]
                 }
             
-            # Convert image URLs
             profile_images = json.loads(other_user_data["profile_images"])
             image_urls = []
-            for file_id in profile_images[:1]:  # Just first image
+            for file_id in profile_images[:1]:
                 try:
                     url = await get_image_url(file_id)
                     image_urls.append(url)
                 except:
                     image_urls.append("https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=HeartLink")
+            
+            if not image_urls:
+                image_urls = ["https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=HeartLink"]
             
             match_data = {
                 "id": match_dict["id"],
