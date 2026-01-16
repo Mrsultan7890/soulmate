@@ -172,15 +172,18 @@ class AuthService extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        print('User data received: $data');
         _currentUser = User.fromJson(data);
-        await _saveAuthData(); // Save updated user data
+        await _saveAuthData();
         notifyListeners();
       } else if (response.statusCode == 401) {
-        // Token expired, clear auth
         await logout();
+      } else {
+        print('Error: ${response.statusCode} - ${response.body}');
       }
-    } catch (e) {
+    } catch (e, stack) {
       print('Error getting current user: $e');
+      print('Stack trace: $stack');
     }
   }
 
