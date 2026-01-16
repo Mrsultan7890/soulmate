@@ -1,0 +1,47 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Vibrant gradient matching app theme -->
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF6B6B"/>
+      <stop offset="50%" style="stop-color:#FF5252"/>
+      <stop offset="100%" style="stop-color:#E91E63"/>
+    </linearGradient>
+    
+    <!-- White heart with subtle gradient -->
+    <linearGradient id="heart" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF"/>
+      <stop offset="100%" style="stop-color:#F5F5F5"/>
+    </linearGradient>
+    
+    <!-- Shadow effect -->
+    <filter id="shadow">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="12"/>
+      <feOffset dx="0" dy="8" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.4"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Rounded background with vibrant gradient -->
+  <rect width="1024" height="1024" rx="226" fill="url(#bg)"/>
+  
+  <!-- Large bold heart -->
+  <path d="M 512 300
+           C 512 300, 460 220, 370 220
+           C 280 220, 220 280, 220 370
+           C 220 490, 300 590, 512 780
+           C 724 590, 804 490, 804 370
+           C 804 280, 744 220, 654 220
+           C 564 220, 512 300, 512 300 Z" 
+        fill="url(#heart)" 
+        filter="url(#shadow)"/>
+  
+  <!-- Accent teal dot (bottom right of heart) -->
+  <circle cx="650" cy="620" r="60" fill="#4ECDC4" opacity="0.95"/>
+  <circle cx="650" cy="620" r="40" fill="#FFFFFF" opacity="0.3"/>
+</svg>
