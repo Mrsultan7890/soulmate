@@ -35,7 +35,7 @@ class FCMService {
         // Handle foreground messages
         FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
         
-        // Handle background messages
+        // Handle notification tap when app is in background
         FirebaseMessaging.onMessageOpenedApp.listen(_handleBackgroundMessage);
         
         // Handle token refresh
@@ -55,7 +55,6 @@ class FCMService {
     }
   }
 
-  // Initialize local notifications for in-app display
   static Future<void> _initializeLocalNotifications() async {
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosSettings = DarwinInitializationSettings();
@@ -67,6 +66,20 @@ class FCMService {
         print('Notification tapped: ${details.payload}');
       },
     );
+    
+    // Create notification channel for Android
+    const androidChannel = AndroidNotificationChannel(
+      'heartlink_channel',
+      'HeartLink Notifications',
+      description: 'Notifications for matches, messages, and likes',
+      importance: Importance.high,
+      playSound: true,
+      enableVibration: true,
+    );
+    
+    await _localNotifications
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(androidChannel);
   }
 
   // Handle foreground messages (app is open)
@@ -101,8 +114,8 @@ class FCMService {
       importance: Importance.high,
       priority: Priority.high,
       icon: '@mipmap/ic_launcher',
-      sound: RawResourceAndroidNotificationSound('notification'),
       enableVibration: true,
+      playSound: true,
     );
     
     const iosDetails = DarwinNotificationDetails(

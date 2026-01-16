@@ -4,7 +4,7 @@ import '../../services/auth_service.dart';
 import '../../services/user_service.dart';
 import '../../utils/theme.dart';
 import '../../utils/location_helper.dart';
-import '../user/user_detail_screen.dart';
+import '../user/user_profile_view_screen.dart';
 
 class NearbyUsersScreen extends StatefulWidget {
   const NearbyUsersScreen({super.key});
@@ -118,7 +118,12 @@ class _NearbyUsersScreenState extends State<NearbyUsersScreen> {
 
   Widget _buildUserCard(user) {
     return GestureDetector(
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => UserDetailScreen(user: user))),
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => UserProfileViewScreen(userId: user.id),
+        ),
+      ),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(12),

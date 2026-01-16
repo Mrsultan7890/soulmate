@@ -60,7 +60,7 @@ async def get_messages(
         
         # Mark messages as read
         await db.execute(
-            "UPDATE messages SET is_read = TRUE WHERE match_id = ? AND sender_id != ?",
+            "UPDATE messages SET is_read = TRUE, read_at = CURRENT_TIMESTAMP WHERE match_id = ? AND sender_id != ?",
             (match_id, current_user["id"])
         )
         await db.commit()

@@ -202,3 +202,92 @@ async def unmatch_user(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to unmatch: {str(e)}"
         )
+
+@router.post("/undo-swipe")
+async def undo_last_swipe(
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """Undo the last swipe"""
+    try:
+        # Get last swipe (not undone)
+        last_swipe = await db.fetchone(
+            "SELECT * FROM swipes WHERE swiper_id = ? AND is_undone = 0 ORDER BY created_at DESC LIMIT 1",
+            (current_user["id"],)
+        )
+        
+        if not last_swipe:
+            raise HTTPException(status_code=404, detail="No swipe to undo")
+        
+        # Mark as undone
+        await db.execute(
+            "UPDATE swipes SET is_undone = 1 WHERE id = ?",
+            (last_swipe["id"],)
+        )
+        await db.commit()
+        
+        return {
+            "success": True,
+            "message": "Swipe undone",
+            "swiped_user_id": last_swipe["swiped_id"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/who-liked-me")
+async def who_liked_me(
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """Get users who liked you"""
+    try:
+        from services.telegram_service import get_image_url
+        
+        # Get users who liked current user (but current user hasn't swiped yet)
+        likes = await db.fetchall("""
+            SELECT u.id, u.name, u.age, u.bio, u.profile_images, s.created_at as liked_at
+            FROM swipes s
+            JOIN users u ON s.swiper_id = u.id
+            WHERE s.swiped_id = ? AND s.is_like = 1 AND s.is_undone = 0
+            AND NOT EXISTS (
+                SELECT 1 FROM swipes s2 
+                WHERE s2.swiper_id = ? AND s2.swiped_id = u.id
+            )
+            ORDER BY s.created_at DESC
+        """, (current_user["id"], current_user["id"]))
+        
+        users_list = []
+        for user in likes:
+            user_dict = dict(user)
+            profile_images = json.loads(user_dict.get("profile_images", "[]"))
+            image_urls = []
+            
+            if profile_images:
+                for file_id in profile_images[:1]:
+                    try:
+                        url = await get_image_url(file_id)
+                        image_urls.append(url)
+                    except:
+                        image_urls.append("https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=HeartLink")
+            else:
+                image_urls.append("https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=HeartLink")
+            
+            users_list.append({
+                "id": user_dict["id"],
+                "name": user_dict["name"],
+                "age": user_dict["age"],
+                "bio": user_dict["bio"],
+                "profile_images": image_urls,
+                "liked_at": user_dict["liked_at"]
+            })
+        
+        return {
+            "count": len(users_list),
+            "users": users_list
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

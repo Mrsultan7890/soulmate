@@ -6,7 +6,9 @@ import '../../widgets/photo_gallery_widget.dart';
 import '../../widgets/privacy_settings_widget.dart';
 import 'edit_profile_screen.dart';
 import '../settings/settings_screen.dart';
-import '../verification/face_verification_screen.dart';
+import '../verification/gender_verification_screen.dart';
+import 'rich_profile_screen.dart';
+import 'profile_views_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -265,35 +267,57 @@ class ProfileScreen extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _buildSettingsTile(Icons.verified_user, 'Face Verification', () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const FaceVerificationScreen()),
-            );
-          }),
+          if (!(authService.currentUser?.isVerified ?? false))
+            _buildSettingsTile(
+              Icons.verified_user,
+              'Verify Gender',
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const GenderVerificationScreen()),
+                ).then((verified) {
+                  if (verified == true) {
+                    authService.refreshUser();
+                  }
+                });
+              },
+              subtitle: 'Required for profile verification',
+            ),
+          _buildSettingsTile(
+            Icons.person_add,
+            'Complete Profile',
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const RichProfileScreen()),
+              );
+            },
+            subtitle: 'Add job, education, lifestyle',
+          ),
+          _buildSettingsTile(
+            Icons.visibility,
+            'Profile Views',
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ProfileViewsScreen()),
+              );
+            },
+            subtitle: 'See who viewed your profile',
+          ),
           _buildSettingsTile(Icons.settings, 'Settings', () {
             Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen()));
           }),
-          _buildSettingsTile(Icons.help, 'Help & Support', () {}),
-          _buildSettingsTile(Icons.privacy_tip, 'Privacy Policy', () {}),
-          _buildSettingsTile(
-            Icons.logout,
-            'Logout',
-            () async {
-              await authService.logout();
-              Navigator.of(context).pushReplacementNamed('/login');
-            },
-            isDestructive: true,
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildSettingsTile(IconData icon, String title, VoidCallback onTap, {bool isDestructive = false}) {
+  Widget _buildSettingsTile(IconData icon, String title, VoidCallback onTap, {bool isDestructive = false, String? subtitle}) {
     return ListTile(
       leading: Icon(icon, color: isDestructive ? AppTheme.errorColor : AppTheme.primaryColor),
       title: Text(title, style: TextStyle(color: isDestructive ? AppTheme.errorColor : AppTheme.textPrimary)),
+      subtitle: subtitle != null ? Text(subtitle, style: const TextStyle(fontSize: 12)) : null,
       trailing: const Icon(Icons.chevron_right, color: AppTheme.textSecondary),
       onTap: onTap,
     );

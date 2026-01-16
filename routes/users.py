@@ -401,6 +401,83 @@ async def get_nearby_users(
             detail=f"Failed to find nearby users: {str(e)}"
         )
 
+@router.post("/track-view/{user_id}")
+async def track_profile_view(
+    user_id: int,
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """Track when someone views a profile"""
+    try:
+        # Don't track self-views
+        if user_id == current_user["id"]:
+            return {"tracked": False}
+        
+        # Insert view record
+        await db.execute(
+            "INSERT INTO profile_views (viewer_id, viewed_id) VALUES (?, ?)",
+            (current_user["id"], user_id)
+        )
+        await db.commit()
+        
+        return {"tracked": True}
+        
+    except Exception as e:
+        print(f"Error tracking view: {e}")
+        return {"tracked": False}
+
+@router.get("/profile-views")
+async def get_profile_views(
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """Get who viewed your profile"""
+    try:
+        from services.telegram_service import get_image_url
+        
+        views = await db.fetchall("""
+            SELECT u.id, u.name, u.age, u.profile_images, pv.created_at as viewed_at
+            FROM profile_views pv
+            JOIN users u ON pv.viewer_id = u.id
+            WHERE pv.viewed_id = ?
+            ORDER BY pv.created_at DESC
+            LIMIT 50
+        """, (current_user["id"],))
+        
+        viewers = []
+        for view in views:
+            view_dict = dict(view)
+            profile_images = json.loads(view_dict.get("profile_images", "[]"))
+            image_url = None
+            
+            if profile_images:
+                try:
+                    image_url = await get_image_url(profile_images[0])
+                except:
+                    image_url = "https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=HeartLink"
+            
+            viewers.append({
+                "id": view_dict["id"],
+                "name": view_dict["name"],
+                "age": view_dict["age"],
+                "profile_image": image_url,
+                "viewed_at": view_dict["viewed_at"]
+            })
+        
+        # Get total count
+        total_count = await db.fetchone(
+            "SELECT COUNT(*) as count FROM profile_views WHERE viewed_id = ?",
+            (current_user["id"],)
+        )
+        
+        return {
+            "total_views": total_count["count"],
+            "recent_viewers": viewers
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.put("/location")
 async def update_location(
     request: dict,
@@ -634,6 +711,56 @@ async def get_available_interests():
 async def get_filter_options():
     """Get all available filter options"""
     return FilterService.get_filter_options()
+
+@router.get("/{user_id}/profile")
+async def get_user_profile(
+    user_id: int,
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """Get another user's profile"""
+    try:
+        from services.telegram_service import get_image_url
+        
+        user = await db.fetchone(
+            "SELECT * FROM users WHERE id = ?",
+            (user_id,)
+        )
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        user_dict = dict(user)
+        
+        # Convert file_ids to URLs
+        profile_images = json.loads(user_dict["profile_images"])
+        image_urls = []
+        for file_id in profile_images:
+            try:
+                url = await get_image_url(file_id)
+                image_urls.append(url)
+            except:
+                image_urls.append("https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=HeartLink")
+        
+        return {
+            "id": user_dict["id"],
+            "name": user_dict["name"],
+            "age": user_dict["age"],
+            "bio": user_dict["bio"],
+            "location": user_dict["location"],
+            "interests": json.loads(user_dict.get("interests", "[]")),
+            "relationship_intent": user_dict.get("relationship_intent"),
+            "profile_images": image_urls,
+            "is_verified": user_dict["is_verified"],
+            "job_title": user_dict.get("job_title"),
+            "education_level": user_dict.get("education_level"),
+            "height": user_dict.get("height"),
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.put("/rich-profile")
 async def update_rich_profile(

@@ -114,6 +114,7 @@ async def init_db():
             swiper_id INTEGER NOT NULL,
             swiped_id INTEGER NOT NULL,
             is_like BOOLEAN NOT NULL,
+            is_undone BOOLEAN DEFAULT FALSE,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (swiper_id) REFERENCES users (id),
             FOREIGN KEY (swiped_id) REFERENCES users (id),
@@ -153,6 +154,18 @@ async def init_db():
             read_at DATETIME,
             FOREIGN KEY (match_id) REFERENCES matches (id),
             FOREIGN KEY (sender_id) REFERENCES users (id)
+        )
+    """)
+    
+    # Profile views table
+    await db.execute("""
+        CREATE TABLE IF NOT EXISTS profile_views (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            viewer_id INTEGER NOT NULL,
+            viewed_id INTEGER NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (viewer_id) REFERENCES users (id),
+            FOREIGN KEY (viewed_id) REFERENCES users (id)
         )
     """)
     

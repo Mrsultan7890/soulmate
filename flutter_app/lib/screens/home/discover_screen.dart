@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
+import 'package:http/http.dart' as http;
 import '../../services/auth_service.dart';
 import '../../services/user_service.dart';
 import '../../services/match_service.dart';
 import '../../utils/theme.dart';
+import '../../utils/api_constants.dart';
 import '../../widgets/user_card.dart';
 import '../../widgets/match_dialog.dart';
 import '../settings/advanced_filter_screen.dart';
 import '../nearby/nearby_users_screen.dart';
+import '../matches/who_liked_me_screen.dart';
 
 class DiscoverScreen extends StatefulWidget {
   const DiscoverScreen({super.key});
@@ -148,6 +151,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             children: [
               IconButton(
                 onPressed: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const WhoLikedMeScreen()));
+                },
+                icon: const Icon(Icons.favorite_border, color: AppTheme.primaryColor),
+              ),
+              IconButton(
+                onPressed: () {
                   Navigator.push(context, MaterialPageRoute(builder: (context) => const NearbyUsersScreen()));
                 },
                 icon: const Icon(Icons.location_on, color: AppTheme.primaryColor),
@@ -206,11 +215,32 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
+          _buildActionButton(Icons.replay, Colors.orange, () async {
+            // Undo swipe
+            final authService = Provider.of<AuthService>(context, listen: false);
+            if (authService.token != null) {
+              try {
+                final response = await http.post(
+                  Uri.parse('${ApiConstants.baseUrl}/api/matches/undo-swipe'),
+                  headers: ApiConstants.getHeaders(token: authService.token!),
+                );
+                if (response.statusCode == 200) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Swipe undone!')),
+                  );
+                  _loadUsers();
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('No swipe to undo')),
+                );
+              }
+            }
+          }),
           _buildActionButton(Icons.close, AppTheme.errorColor, () {
             _controller.swipeLeft();
           }),
           _buildActionButton(Icons.star, AppTheme.secondaryColor, () {
-            // Super like functionality
             _controller.swipeTop();
           }),
           _buildActionButton(Icons.favorite, AppTheme.primaryColor, () {

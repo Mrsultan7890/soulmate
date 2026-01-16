@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../../services/auth_service.dart';
 import '../../services/chat_service.dart';
 import '../../utils/theme.dart';
+import '../../utils/api_constants.dart';
+import '../call/video_call_screen.dart';
+import '../user/user_profile_view_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   final Map<String, dynamic> match;
@@ -83,38 +88,58 @@ class _ChatScreenState extends State<ChatScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: Row(
-          children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundColor: AppTheme.primaryColor.withOpacity(0.2),
-              backgroundImage: otherUser['profile_images'] != null && 
-                              (otherUser['profile_images'] as List).isNotEmpty
-                  ? NetworkImage((otherUser['profile_images'] as List)[0])
-                  : null,
-              child: otherUser['profile_images'] == null || 
-                     (otherUser['profile_images'] as List).isEmpty
-                  ? const Icon(Icons.person, color: AppTheme.primaryColor)
-                  : null,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    otherUser['name'] ?? 'Unknown',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                  Text(
-                    'Active now',
-                    style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
-                  ),
-                ],
+        title: GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => UserProfileViewScreen(userId: otherUser['id']),
               ),
-            ),
-          ],
+            );
+          },
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: AppTheme.primaryColor.withOpacity(0.2),
+                backgroundImage: otherUser['profile_images'] != null && 
+                                (otherUser['profile_images'] as List).isNotEmpty
+                    ? NetworkImage((otherUser['profile_images'] as List)[0])
+                    : null,
+                child: otherUser['profile_images'] == null || 
+                       (otherUser['profile_images'] as List).isEmpty
+                    ? const Icon(Icons.person, color: AppTheme.primaryColor)
+                    : null,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      otherUser['name'] ?? 'Unknown',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+                    Text(
+                      'Active now',
+                      style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.videocam, color: AppTheme.primaryColor),
+            onPressed: () => _startVideoCall(),
+          ),
+          IconButton(
+            icon: const Icon(Icons.call, color: AppTheme.primaryColor),
+            onPressed: () => _startAudioCall(),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -201,6 +226,14 @@ class _ChatScreenState extends State<ChatScreen> {
                       fontSize: 10,
                     ),
                   ),
+                  if (isMe) ...[
+                    const SizedBox(width: 4),
+                    Icon(
+                      message['is_read'] == true ? Icons.done_all : Icons.done,
+                      size: 12,
+                      color: message['is_read'] == true ? Colors.blue : Colors.white.withOpacity(0.7),
+                    ),
+                  ],
                   if (message['reactions'] != null && (message['reactions'] as Map).isNotEmpty) ...[
                     const SizedBox(width: 8),
                     Text(
@@ -296,6 +329,34 @@ class _ChatScreenState extends State<ChatScreen> {
         SnackBar(content: Text(forEveryone ? 'Message deleted for everyone' : 'Message deleted')),
       );
     }
+  }
+
+  void _startVideoCall() {
+    final otherUser = widget.match['other_user'];
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => VideoCallScreen(
+          otherUserId: otherUser['id'],
+          otherUserName: otherUser['name'],
+          isVideoCall: true,
+        ),
+      ),
+    );
+  }
+
+  void _startAudioCall() {
+    final otherUser = widget.match['other_user'];
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => VideoCallScreen(
+          otherUserId: otherUser['id'],
+          otherUserName: otherUser['name'],
+          isVideoCall: false,
+        ),
+      ),
+    );
   }
 
   Widget _buildMessageInput() {

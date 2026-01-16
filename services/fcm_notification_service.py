@@ -27,6 +27,10 @@ class FCMNotificationService:
         data: dict = None
     ) -> bool:
         """Send FCM notification (auto-detects Legacy or V1)"""
+        if not fcm_token:
+            print("⚠️ No FCM token provided")
+            return False
+        
         if self.use_legacy:
             return await self._send_legacy(fcm_token, title, body, data)
         else:
@@ -51,17 +55,25 @@ class FCMNotificationService:
                 'sound': 'default',
             },
             'priority': 'high',
-            'data': data or {}
+            'data': data or {},
+            'android': {
+                'priority': 'high',
+                'notification': {
+                    'sound': 'default',
+                    'channel_id': 'heartlink_channel'
+                }
+            }
         }
         
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(self.fcm_url, headers=headers, json=payload) as response:
-                    if response.status == 200:
+                    result = await response.json()
+                    if response.status == 200 and result.get('success', 0) > 0:
                         print(f"✅ Notification sent: {title}")
                         return True
                     else:
-                        print(f"❌ FCM error: {response.status}")
+                        print(f"❌ FCM error: {response.status} - {result}")
                         return False
         except Exception as e:
             print(f"❌ Notification failed: {e}")
