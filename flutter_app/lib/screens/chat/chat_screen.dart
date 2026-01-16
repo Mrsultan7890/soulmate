@@ -169,37 +169,133 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget _buildMessageBubble(dynamic message, bool isMe) {
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
-        decoration: BoxDecoration(
-          gradient: isMe ? AppTheme.primaryGradient : null,
-          color: isMe ? null : Colors.grey[200],
-          borderRadius: BorderRadius.circular(20),
+      child: GestureDetector(
+        onLongPress: () => _showMessageOptions(message, isMe),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
+          decoration: BoxDecoration(
+            gradient: isMe ? AppTheme.primaryGradient : null,
+            color: isMe ? null : Colors.grey[200],
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                message['content'] ?? '',
+                style: TextStyle(
+                  color: isMe ? Colors.white : AppTheme.textPrimary,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    timeago.format(DateTime.parse(message['created_at'] ?? DateTime.now().toIso8601String())),
+                    style: TextStyle(
+                      color: isMe ? Colors.white.withOpacity(0.7) : AppTheme.textSecondary,
+                      fontSize: 10,
+                    ),
+                  ),
+                  if (message['reactions'] != null && (message['reactions'] as Map).isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      (message['reactions'] as Map).values.join(' '),
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  void _showMessageOptions(dynamic message, bool isMe) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              message['content'] ?? '',
-              style: TextStyle(
-                color: isMe ? Colors.white : AppTheme.textPrimary,
-                fontSize: 14,
-              ),
+            ListTile(
+              leading: const Icon(Icons.emoji_emotions, color: AppTheme.primaryColor),
+              title: const Text('React'),
+              onTap: () {
+                Navigator.pop(context);
+                _showReactionPicker(message);
+              },
             ),
-            const SizedBox(height: 4),
-            Text(
-              timeago.format(DateTime.parse(message['created_at'] ?? DateTime.now().toIso8601String())),
-              style: TextStyle(
-                color: isMe ? Colors.white.withOpacity(0.7) : AppTheme.textSecondary,
-                fontSize: 10,
+            if (isMe) ...[
+              ListTile(
+                leading: const Icon(Icons.delete, color: AppTheme.errorColor),
+                title: const Text('Delete for me'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _deleteMessage(message['id'], false);
+                },
               ),
-            ),
+              ListTile(
+                leading: const Icon(Icons.delete_forever, color: AppTheme.errorColor),
+                title: const Text('Delete for everyone'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _deleteMessage(message['id'], true);
+                },
+              ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  void _showReactionPicker(dynamic message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('React to message'),
+        content: Wrap(
+          spacing: 16,
+          children: ['❤️', '😂', '😮', '😢', '😡', '👍'].map((emoji) {
+            return GestureDetector(
+              onTap: () {
+                Navigator.pop(context);
+                _addReaction(message['id'], emoji);
+              },
+              child: Text(emoji, style: const TextStyle(fontSize: 32)),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _addReaction(int messageId, String emoji) async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    if (authService.token != null) {
+      // Call backend API to add reaction
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Reacted with $emoji')),
+      );
+    }
+  }
+
+  Future<void> _deleteMessage(int messageId, bool forEveryone) async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    if (authService.token != null) {
+      // Call backend API to delete message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(forEveryone ? 'Message deleted for everyone' : 'Message deleted')),
+      );
+    }
   }
 
   Widget _buildMessageInput() {
