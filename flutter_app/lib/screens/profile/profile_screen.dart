@@ -92,47 +92,63 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _buildProfileImage(String? imageUrl) {
-    return Container(
-      width: 120,
-      height: 120,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: imageUrl == null || imageUrl.isEmpty ? AppTheme.primaryGradient : null,
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primaryColor.withOpacity(0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: imageUrl == null || imageUrl.isEmpty
-          ? const Icon(Icons.person, size: 60, color: Colors.white)
-          : ClipOval(
-              child: Image.network(
-                imageUrl,
-                width: 120,
-                height: 120,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: AppTheme.primaryGradient,
-                  ),
-                  child: const Icon(Icons.person, size: 60, color: Colors.white),
-                ),
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppTheme.primaryColor.withOpacity(0.1),
-                    ),
-                    child: const Center(child: CircularProgressIndicator()),
-                  );
-                },
+    return Stack(
+      children: [
+        Container(
+          width: 120,
+          height: 120,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: imageUrl == null || imageUrl.isEmpty ? AppTheme.primaryGradient : null,
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.primaryColor.withOpacity(0.3),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
               ),
+            ],
+          ),
+          child: imageUrl == null || imageUrl.isEmpty
+              ? const Icon(Icons.person, size: 60, color: Colors.white)
+              : ClipOval(
+                  child: Image.network(
+                    imageUrl,
+                    width: 120,
+                    height: 120,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: AppTheme.primaryGradient,
+                      ),
+                      child: const Icon(Icons.person, size: 60, color: Colors.white),
+                    ),
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppTheme.primaryColor.withOpacity(0.1),
+                        ),
+                        child: const Center(child: CircularProgressIndicator()),
+                      );
+                    },
+                  ),
+                ),
+        ),
+        Positioned(
+          bottom: 0,
+          right: 0,
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: const BoxDecoration(
+              color: AppTheme.successColor,
+              shape: BoxShape.circle,
             ),
+            child: const Icon(Icons.verified, color: Colors.white, size: 20),
+          ),
+        ),
+      ],
     );
   }
 
@@ -241,6 +257,11 @@ class ProfileScreen extends StatelessWidget {
       ),
       child: Column(
         children: [
+          _buildSettingsTile(Icons.verified_user, 'Face Verification', () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Face verification coming soon!')),
+            );
+          }),
           _buildSettingsTile(Icons.settings, 'Settings', () {
             Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen()));
           }),
