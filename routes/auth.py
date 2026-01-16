@@ -187,12 +187,12 @@ async def login(user_login: UserLogin, db = Depends(get_db)):
         user=user_profile
     )
 
-@router.get("/me", response_model=UserProfile)
+@router.get("/me")
 async def get_current_user_profile(current_user: dict = Depends(get_current_user)):
     from services.telegram_service import get_image_url
     
     # Convert file_ids to URLs
-    profile_images = json.loads(current_user["profile_images"])
+    profile_images = json.loads(current_user.get("profile_images", "[]"))
     image_urls = []
     for file_id in profile_images:
         try:
@@ -201,20 +201,23 @@ async def get_current_user_profile(current_user: dict = Depends(get_current_user
         except:
             image_urls.append("https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=HeartLink")
     
-    return UserProfile(
-        id=current_user["id"],
-        email=current_user["email"],
-        name=current_user["name"],
-        age=current_user["age"],
-        bio=current_user["bio"],
-        location=current_user["location"],
-        latitude=current_user.get("latitude"),
-        longitude=current_user.get("longitude"),
-        interests=json.loads(current_user.get("interests", "[]")) if current_user.get("interests") else [],
-        relationship_intent=current_user.get("relationship_intent"),
-        profile_images=image_urls,
-        preferences=json.loads(current_user["preferences"]),
-        is_verified=current_user["is_verified"],
-        is_premium=current_user["is_premium"],
-        created_at=current_user["created_at"]
-    )
+    return {
+        "id": current_user["id"],
+        "email": current_user["email"],
+        "name": current_user["name"],
+        "age": current_user.get("age"),
+        "gender": current_user.get("gender"),
+        "bio": current_user.get("bio"),
+        "location": current_user.get("location"),
+        "latitude": current_user.get("latitude"),
+        "longitude": current_user.get("longitude"),
+        "interests": json.loads(current_user.get("interests", "[]")),
+        "relationship_intent": current_user.get("relationship_intent"),
+        "profile_images": image_urls,
+        "preferences": json.loads(current_user.get("preferences", "{}")),
+        "is_verified": current_user.get("is_verified", False),
+        "is_premium": current_user.get("is_premium", False),
+        "created_at": current_user.get("created_at"),
+        "avatar_data": current_user.get("avatar_data"),
+        "is_face_verified": current_user.get("is_face_verified", False)
+    }

@@ -101,8 +101,8 @@ class User {
           ? List<String>.from(json['profile_images'])
           : [],
       preferences: json['preferences'] ?? {},
-      isVerified: json['is_verified'] ?? false,
-      isPremium: json['is_premium'] ?? false,
+      isVerified: json['is_verified'] == 1 || json['is_verified'] == true,
+      isPremium: json['is_premium'] == 1 || json['is_premium'] == true,
       createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
     );
   }

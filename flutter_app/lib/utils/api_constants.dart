@@ -1,6 +1,6 @@
 class ApiConstants {
   // Base URL - Change this to your backend URL
-  static const String baseUrl = 'http://localhost:8000';
+  static const String baseUrl = 'http://127.0.0.1:8000';
   
   // Auth Endpoints
   static const String register = '/api/auth/register';
@@ -31,7 +31,7 @@ class ApiConstants {
   static const String messages = '/api/chat';
   static const String sendMessage = '/api/chat';
   static const String unreadCount = '/api/chat';
-  static const String websocket = 'ws://localhost:8000/api/chat/ws';
+  static const String websocket = 'ws://127.0.0.1:8000/api/chat/ws';
   
   // Enhanced Chat Endpoints
   static const String enhancedSendMessage = '/api/enhanced-chat/send-message';
