@@ -84,77 +84,98 @@ class UserCard extends StatelessWidget {
       bottom: 0,
       left: 0,
       right: 0,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    '${user.name}, ${user.displayAge}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                if (user.isVerified)
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: const BoxDecoration(
-                      color: AppTheme.successColor,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.verified, color: Colors.white, size: 20),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            if (user.location != null)
+      child: GestureDetector(
+        onTap: () {
+          Navigator.pushNamed(context, '/user-detail', arguments: user);
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Row(
                 children: [
-                  const Icon(Icons.location_on, color: Colors.white, size: 16),
-                  const SizedBox(width: 4),
-                  Text(
-                    user.displayLocation,
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                  Expanded(
+                    child: Text(
+                      '${user.name}, ${user.displayAge}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
+                  if (user.isVerified)
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: const BoxDecoration(
+                        color: AppTheme.successColor,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.verified, color: Colors.white, size: 20),
+                    ),
                 ],
               ),
-            if (user.bio != null && user.bio!.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              if (user.location != null)
+                Row(
+                  children: [
+                    const Icon(Icons.location_on, color: Colors.white, size: 16),
+                    const SizedBox(width: 4),
+                    Text(
+                      user.displayLocation,
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                  ],
+                ),
+              if (user.bio != null && user.bio!.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  user.bio!,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+              if (user.interests.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: user.interests.take(5).map((interest) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white.withOpacity(0.3)),
+                      ),
+                      child: Text(
+                        interest,
+                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
               const SizedBox(height: 12),
-              Text(
-                user.bio!,
-                style: const TextStyle(color: Colors.white, fontSize: 14),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.white, size: 16),
+                    SizedBox(width: 4),
+                    Text('Tap for full profile', style: TextStyle(color: Colors.white, fontSize: 12)),
+                  ],
+                ),
               ),
             ],
-            if (user.interests.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: user.interests.take(5).map((interest) {
-                  return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white.withOpacity(0.3)),
-                    ),
-                    child: Text(
-                      interest,
-                      style: const TextStyle(color: Colors.white, fontSize: 12),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
-          ],
+          ),
         ),
       ),
     );

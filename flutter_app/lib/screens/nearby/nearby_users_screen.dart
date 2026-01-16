@@ -125,7 +125,28 @@ class _NearbyUsersScreenState extends State<NearbyUsersScreen> {
         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))]),
         child: Row(
           children: [
-            CircleAvatar(radius: 30, backgroundColor: AppTheme.primaryColor.withOpacity(0.2), child: const Icon(Icons.person, color: AppTheme.primaryColor)),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(30),
+              child: user.profileImages.isNotEmpty
+                  ? Image.network(
+                      user.firstImage,
+                      width: 60,
+                      height: 60,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        width: 60,
+                        height: 60,
+                        color: AppTheme.primaryColor.withOpacity(0.2),
+                        child: const Icon(Icons.person, color: AppTheme.primaryColor),
+                      ),
+                    )
+                  : Container(
+                      width: 60,
+                      height: 60,
+                      color: AppTheme.primaryColor.withOpacity(0.2),
+                      child: const Icon(Icons.person, color: AppTheme.primaryColor),
+                    ),
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

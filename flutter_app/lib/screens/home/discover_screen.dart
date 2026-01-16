@@ -52,7 +52,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     if (index >= Provider.of<UserService>(context, listen: false).discoverUsers.length) return false;
 
     final swipedUser = Provider.of<UserService>(context, listen: false).discoverUsers[index];
-    final isLike = direction == CardSwiperDirection.right;
+    final isLike = direction == CardSwiperDirection.right || direction == CardSwiperDirection.top;
+    final isSuperLike = direction == CardSwiperDirection.top;
 
     final authService = Provider.of<AuthService>(context, listen: false);
     final matchService = Provider.of<MatchService>(context, listen: false);
