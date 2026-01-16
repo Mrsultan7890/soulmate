@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import uvicorn
 
-from routes import auth, users, matches, chat, safety, enhanced_chat, safety_tips, fcm, gender_verification, calls
+from routes import auth, users, matches, chat, safety, enhanced_chat, safety_tips, fcm, gender_verification, calls, profile_features
 from config.database import init_db
 from config.settings import settings
 
@@ -37,6 +37,7 @@ app.include_router(safety.router, prefix="/api/safety", tags=["Safety"])
 app.include_router(safety_tips.router, prefix="/api/safety-tips", tags=["Safety Tips"])
 app.include_router(gender_verification.router, prefix="/api/verification", tags=["Gender Verification"])
 app.include_router(calls.router, prefix="/api/calls", tags=["Video/Audio Calls"])
+app.include_router(profile_features.router, prefix="/api/profile", tags=["Profile Features"])
 
 app.include_router(fcm.router, prefix="/api/users", tags=["FCM"])
 

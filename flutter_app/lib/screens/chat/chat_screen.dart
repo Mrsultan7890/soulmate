@@ -36,7 +36,40 @@ class _ChatScreenState extends State<ChatScreen> {
     if (authService.token != null) {
       await chatService.fetchMessages(authService.token!, widget.match['id']);
       _scrollToBottom();
+      _updateActivity();
     }
+  }
+
+  Future<void> _updateActivity() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    if (authService.token == null) return;
+    
+    try {
+      await http.post(
+        Uri.parse('${ApiConstants.baseUrl}/profile/update-activity'),
+        headers: {'Authorization': 'Bearer ${authService.token}'},
+      );
+    } catch (e) {
+      print('Activity update error: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> _getActivityStatus(int userId) async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    if (authService.token == null) return {'status': 'Offline', 'is_online': false};
+    
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConstants.baseUrl}/profile/activity-status/$userId'),
+        headers: {'Authorization': 'Bearer ${authService.token}'},
+      );
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+    } catch (e) {
+      print('Activity status error: $e');
+    }
+    return {'status': 'Offline', 'is_online': false};
   }
 
   void _scrollToBottom() {
@@ -120,9 +153,39 @@ class _ChatScreenState extends State<ChatScreen> {
                       otherUser['name'] ?? 'Unknown',
                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                     ),
-                    Text(
-                      'Active now',
-                      style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                    FutureBuilder<Map<String, dynamic>>(
+                      future: _getActivityStatus(otherUser['id']),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasData) {
+                          final isOnline = snapshot.data!['is_online'] ?? false;
+                          final status = snapshot.data!['status'] ?? '';
+                          return Row(
+                            children: [
+                              if (isOnline)
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  margin: const EdgeInsets.only(right: 4),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.green,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              Text(
+                                status,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isOnline ? Colors.green : AppTheme.textSecondary,
+                                ),
+                              ),
+                            ],
+                          );
+                        }
+                        return Text(
+                          'Loading...',
+                          style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -131,6 +194,10 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.location_on, color: AppTheme.primaryColor),
+            onPressed: () => _showLocationShareDialog(),
+          ),
           IconButton(
             icon: const Icon(Icons.videocam, color: AppTheme.primaryColor),
             onPressed: () => _startVideoCall(),
@@ -357,6 +424,114 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
       ),
     );
+  }
+
+  void _showLocationShareDialog() {
+    final TextEditingController nameController = TextEditingController();
+    final TextEditingController phoneController = TextEditingController();
+    int selectedHours = 2;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Share Live Location'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Share your live location for safety during your date.'),
+                const SizedBox(height: 16),
+                const Text('Duration:', style: TextStyle(fontWeight: FontWeight.bold)),
+                DropdownButton<int>(
+                  value: selectedHours,
+                  isExpanded: true,
+                  items: [1, 2, 3, 4, 6, 8].map((hours) {
+                    return DropdownMenuItem(
+                      value: hours,
+                      child: Text('$hours hour${hours > 1 ? "s" : ""}'),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      selectedHours = value!;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                const Text('Emergency Contact (Optional):', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Name',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: phoneController,
+                  decoration: const InputDecoration(
+                    labelText: 'Phone Number',
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.phone,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _shareLocation(
+                  selectedHours,
+                  nameController.text.trim(),
+                  phoneController.text.trim(),
+                );
+              },
+              child: const Text('Share Location'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _shareLocation(int hours, String emergencyName, String emergencyPhone) async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    if (authService.token == null) return;
+
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConstants.baseUrl}/profile/share-location'),
+        headers: {
+          'Authorization': 'Bearer ${authService.token}',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({
+          'shared_with_user_id': widget.match['other_user']['id'],
+          'duration_hours': hours,
+          'emergency_contact_name': emergencyName.isNotEmpty ? emergencyName : null,
+          'emergency_contact_phone': emergencyPhone.isNotEmpty ? emergencyPhone : null,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Location shared successfully')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
   }
 
   Widget _buildMessageInput() {

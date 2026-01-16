@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../../services/auth_service.dart';
 import '../../services/user_service.dart';
 import '../../utils/theme.dart';
 import '../../utils/location_helper.dart';
+import '../../utils/api_constants.dart';
 import '../user/user_profile_view_screen.dart';
 
 class NearbyUsersScreen extends StatefulWidget {
@@ -130,27 +133,52 @@ class _NearbyUsersScreenState extends State<NearbyUsersScreen> {
         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))]),
         child: Row(
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(30),
-              child: user.profileImages.isNotEmpty
-                  ? Image.network(
-                      user.firstImage,
-                      width: 60,
-                      height: 60,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        width: 60,
-                        height: 60,
-                        color: AppTheme.primaryColor.withOpacity(0.2),
-                        child: const Icon(Icons.person, color: AppTheme.primaryColor),
-                      ),
-                    )
-                  : Container(
-                      width: 60,
-                      height: 60,
-                      color: AppTheme.primaryColor.withOpacity(0.2),
-                      child: const Icon(Icons.person, color: AppTheme.primaryColor),
-                    ),
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(30),
+                  child: user.profileImages.isNotEmpty
+                      ? Image.network(
+                          user.firstImage,
+                          width: 60,
+                          height: 60,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            width: 60,
+                            height: 60,
+                            color: AppTheme.primaryColor.withOpacity(0.2),
+                            child: const Icon(Icons.person, color: AppTheme.primaryColor),
+                          ),
+                        )
+                      : Container(
+                          width: 60,
+                          height: 60,
+                          color: AppTheme.primaryColor.withOpacity(0.2),
+                          child: const Icon(Icons.person, color: AppTheme.primaryColor),
+                        ),
+                ),
+                FutureBuilder<Map<String, dynamic>>(
+                  future: _getActivityStatus(user.id),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData && snapshot.data!['is_online'] == true) {
+                      return Positioned(
+                        bottom: 2,
+                        right: 2,
+                        child: Container(
+                          width: 14,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            color: Colors.green,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
+              ],
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -164,7 +192,21 @@ class _NearbyUsersScreenState extends State<NearbyUsersScreen> {
                     ],
                   ),
                   if (user.age != null) Text('${user.age} years old', style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
-                  if (user.location != null) Row(children: [const Icon(Icons.location_on, size: 14, color: AppTheme.textSecondary), Text(user.location!, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary))]),
+                  FutureBuilder<Map<String, dynamic>>(
+                    future: _getActivityStatus(user.id),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasData) {
+                        return Text(
+                          snapshot.data!['status'],
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: snapshot.data!['is_online'] ? Colors.green : AppTheme.textSecondary,
+                          ),
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  ),
                 ],
               ),
             ),
@@ -173,5 +215,21 @@ class _NearbyUsersScreenState extends State<NearbyUsersScreen> {
         ),
       ),
     );
+  }
+
+  Future<Map<String, dynamic>> _getActivityStatus(int userId) async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    if (authService.token == null) return {'status': 'Offline', 'is_online': false};
+
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConstants.baseUrl}/api/profile/activity-status/$userId'),
+        headers: {'Authorization': 'Bearer ${authService.token}'},
+      );
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+    } catch (e) {}
+    return {'status': 'Offline', 'is_online': false};
   }
 }

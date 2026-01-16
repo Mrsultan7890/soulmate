@@ -4,6 +4,7 @@ import '../../services/auth_service.dart';
 import '../../utils/theme.dart';
 import '../../widgets/photo_gallery_widget.dart';
 import '../../widgets/privacy_settings_widget.dart';
+import '../../widgets/profile_completion_widget.dart';
 import 'edit_profile_screen.dart';
 import '../settings/settings_screen.dart';
 import '../verification/gender_verification_screen.dart';
@@ -41,6 +42,8 @@ class ProfileScreen extends StatelessWidget {
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: AppTheme.textSecondary),
                       ),
                     const SizedBox(height: 24),
+                    const ProfileCompletionWidget(),
+                    const SizedBox(height: 16),
                     _buildInfoCard(context, user),
                     const SizedBox(height: 16),
                     const PhotoGalleryWidget(),

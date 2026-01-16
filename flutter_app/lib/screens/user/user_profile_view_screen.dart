@@ -18,6 +18,7 @@ class UserProfileViewScreen extends StatefulWidget {
 
 class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
   Map<String, dynamic>? _userProfile;
+  Map<String, dynamic>? _activityStatus;
   bool _isLoading = true;
   int _currentImageIndex = 0;
 
@@ -26,6 +27,7 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
     super.initState();
     _loadUserProfile();
     _trackView();
+    _loadActivityStatus();
   }
 
   Future<void> _loadUserProfile() async {
@@ -58,6 +60,24 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
         Uri.parse('${ApiConstants.baseUrl}/api/users/track-view/${widget.userId}'),
         headers: ApiConstants.getHeaders(token: authService.token!),
       );
+    } catch (e) {}
+  }
+
+  Future<void> _loadActivityStatus() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    if (authService.token == null) return;
+
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConstants.baseUrl}/api/profile/activity-status/${widget.userId}'),
+        headers: ApiConstants.getHeaders(token: authService.token!),
+      );
+
+      if (response.statusCode == 200) {
+        setState(() {
+          _activityStatus = jsonDecode(response.body);
+        });
+      }
     } catch (e) {}
   }
 
@@ -194,6 +214,29 @@ class _UserProfileViewScreenState extends State<UserProfileViewScreen> {
                             Text(
                               _userProfile!['location'],
                               style: const TextStyle(color: Colors.white70, fontSize: 16),
+                            ),
+                          ],
+                        ),
+                      ],
+                      if (_activityStatus != null) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              margin: const EdgeInsets.only(right: 8),
+                              decoration: BoxDecoration(
+                                color: _activityStatus!['is_online'] ? Colors.green : Colors.grey,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            Text(
+                              _activityStatus!['status'],
+                              style: TextStyle(
+                                color: _activityStatus!['is_online'] ? Colors.green : Colors.white70,
+                                fontSize: 14,
+                              ),
                             ),
                           ],
                         ),

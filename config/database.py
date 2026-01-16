@@ -169,6 +169,24 @@ async def init_db():
         )
     """)
     
+    # Location sharing table
+    await db.execute("""
+        CREATE TABLE IF NOT EXISTS location_shares (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            shared_with_user_id INTEGER NOT NULL,
+            latitude REAL NOT NULL,
+            longitude REAL NOT NULL,
+            expires_at DATETIME NOT NULL,
+            emergency_contact_name TEXT,
+            emergency_contact_phone TEXT,
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id),
+            FOREIGN KEY (shared_with_user_id) REFERENCES users (id)
+        )
+    """)
+    
     # User flags table
     await db.execute("""
         CREATE TABLE IF NOT EXISTS user_flags (
