@@ -106,6 +106,41 @@ class TelegramService:
             import traceback
             traceback.print_exc()
             return "https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=HeartLink"
+    
+    async def upload_image_from_base64(self, base64_data: str) -> str:
+        """Upload base64 image to Telegram and return file_id"""
+        try:
+            import base64
+            import io
+            
+            # Remove data:image prefix if present
+            if 'base64,' in base64_data:
+                base64_data = base64_data.split('base64,')[1]
+            
+            # Decode base64
+            image_bytes = base64.b64decode(base64_data)
+            
+            # Upload to Telegram
+            url = f"{self.base_url}/sendPhoto"
+            data = aiohttp.FormData()
+            data.add_field('chat_id', self.chat_id)
+            data.add_field('photo', io.BytesIO(image_bytes), filename='image.jpg')
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, data=data) as response:
+                    if response.status == 200:
+                        result = await response.json()
+                        if result.get('ok'):
+                            # Get file_id from largest photo
+                            photos = result['result']['photo']
+                            file_id = photos[-1]['file_id']
+                            print(f"[TelegramService] Image uploaded, file_id: {file_id[:50]}...")
+                            return file_id
+            
+            raise Exception("Upload failed")
+        except Exception as e:
+            print(f"[TelegramService] Upload error: {e}")
+            raise
 
 # Global instance
 telegram_service = TelegramService()
@@ -114,9 +149,6 @@ telegram_service = TelegramService()
 async def upload_image_to_telegram(image_data: str, is_base64: bool = True):
     """Helper function to upload image"""
     try:
-        if not await telegram_service.test_connection():
-            raise Exception("Telegram bot connection failed")
-        
         if is_base64:
             return await telegram_service.upload_image_from_base64(image_data)
         else:

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from typing import Optional
+import cv2
 
 from routes.auth import get_current_user
 from config.database import get_db
@@ -22,39 +23,53 @@ async def detect_gender(
     current_user: dict = Depends(get_current_user),
     db = Depends(get_db)
 ):
-    """Detect gender from face image"""
+    """Verify face and mark as verified (gender already set during profile setup)"""
     try:
-        # Convert base64 to image and detect gender
-        img_array = face_service.base64_to_image(request.image_data)
-        gender, confidence = face_service.detect_gender_simple(img_array)
+        if face_service is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Face detection service not available"
+            )
         
-        if gender is None:
+        # Just verify face exists
+        img_array = face_service.base64_to_image(request.image_data)
+        gray = cv2.cvtColor(img_array, cv2.COLOR_BGR2GRAY)
+        faces = face_service.face_cascade.detectMultiScale(gray, 1.1, 4, minSize=(30, 30))
+        
+        if len(faces) == 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=confidence  # Error message
+                detail="No face detected in image"
             )
+        
+        # Get gender from current user (already set during profile setup)
+        gender = current_user.get('gender', 'unknown')
         
         # Generate avatar data
         avatar_data = face_service.create_avatar_data(gender, request.image_data)
         
-        # Update user's gender and avatar in database
+        # Mark as face verified
         await db.execute(
-            "UPDATE users SET gender = ?, avatar_data = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-            (gender, str(avatar_data), current_user["id"])
+            "UPDATE users SET avatar_data = ?, is_face_verified = TRUE, face_verified_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (str(avatar_data), current_user["id"])
         )
         await db.commit()
         
         return {
             "gender": gender,
-            "confidence": confidence,
-            "avatar_data": avatar_data,
-            "message": f"Gender detected as {gender}"
+            "confidence": "Face verified",
+            "avatar_data": avatar_data if isinstance(avatar_data, dict) else {},
+            "message": f"Face verified successfully"
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
+        import traceback
+        print(f"Error in detect_gender: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Face detection failed: {str(e)}"
+            detail=f"Face verification failed: {str(e)}"
         )
 
 @router.post("/verify-face")

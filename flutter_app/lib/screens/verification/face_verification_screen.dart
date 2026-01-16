@@ -61,7 +61,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> {
         
         setState(() {
           _detectedGender = data['gender'];
-          _avatarData = data['avatar_data'];
+          _avatarData = data['avatar_data'] is Map ? data['avatar_data'] : {};
         });
 
         // Refresh user data
