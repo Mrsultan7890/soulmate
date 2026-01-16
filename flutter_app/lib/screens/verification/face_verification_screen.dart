@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
 import '../../utils/theme.dart';
-import '../../utils/image_picker_helper.dart';
+import '../../utils/api_constants.dart';
+import '../../services/auth_service.dart';
 
 class FaceVerificationScreen extends StatefulWidget {
   const FaceVerificationScreen({super.key});
@@ -34,31 +37,54 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> {
     setState(() => _isProcessing = true);
 
     try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      if (authService.token == null) {
+        throw Exception('Not authenticated');
+      }
+
       // Convert image to base64
       final bytes = await _capturedImage!.readAsBytes();
       final base64Image = base64Encode(bytes);
 
-      // Simple gender detection based on image analysis
-      // In production, use ML model or backend API
-      final random = DateTime.now().millisecondsSinceEpoch % 2;
-      
-      setState(() {
-        _detectedGender = random == 0 ? 'Male' : 'Female';
-        _avatarData = {
-          'style': 'modern',
-          'color': _detectedGender == 'Male' ? '#4A90E2' : '#FF6B9D',
-        };
-      });
+      // Call backend API for face verification
+      final response = await http.post(
+        Uri.parse('${ApiConstants.baseUrl}/api/face/detect-gender'),
+        headers: ApiConstants.getHeaders(token: authService.token),
+        body: jsonEncode({
+          'image_data': base64Image,
+          'verification_type': 'gender_detection',
+        }),
+      );
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Face verified as $_detectedGender!')),
-        );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        
+        setState(() {
+          _detectedGender = data['gender'];
+          _avatarData = data['avatar_data'];
+        });
+
+        // Refresh user data
+        await authService.getCurrentUser();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Face verified as $_detectedGender!'),
+              backgroundColor: AppTheme.successColor,
+            ),
+          );
+        }
+      } else {
+        throw Exception('Verification failed: ${response.body}');
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Verification failed: $e')),
+          SnackBar(
+            content: Text('Verification failed: $e'),
+            backgroundColor: AppTheme.errorColor,
+          ),
         );
       }
     } finally {
