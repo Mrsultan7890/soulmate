@@ -45,3 +45,7 @@ Thumbs.db
 # Firebase Service Account (contains secrets)
 firebase-service-account.json
 heartlink-*.json
+
+# Google Services (contains API keys)
+google-services.json
+flutter_app/android/app/google-services.json
