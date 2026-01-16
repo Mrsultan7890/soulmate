@@ -41,3 +41,7 @@ flutter_app/pubspec.lock
 # OS
 .DS_Store
 Thumbs.db
+
+# Firebase Service Account (contains secrets)
+firebase-service-account.json
+heartlink-*.json

@@ -5,8 +5,19 @@ from typing import Optional
 
 class FCMNotificationService:
     def __init__(self):
-        self.server_key = os.getenv('FCM_SERVER_KEY')
-        self.fcm_url = 'https://fcm.googleapis.com/fcm/send'
+        # Try V1 API first, fallback to Legacy
+        self.use_legacy = not os.path.exists('firebase-service-account.json')
+        
+        if self.use_legacy:
+            # Legacy API
+            self.server_key = os.getenv('FCM_SERVER_KEY')
+            self.fcm_url = 'https://fcm.googleapis.com/fcm/send'
+            print("📱 Using FCM Legacy API")
+        else:
+            # V1 API
+            self.project_id = os.getenv('FIREBASE_PROJECT_ID', 'heartlink')
+            self.fcm_url = f'https://fcm.googleapis.com/v1/projects/{self.project_id}/messages:send'
+            print("📱 Using FCM V1 API")
     
     async def send_notification(
         self,
@@ -15,7 +26,14 @@ class FCMNotificationService:
         body: str,
         data: dict = None
     ) -> bool:
-        """Send FCM notification to user"""
+        """Send FCM notification (auto-detects Legacy or V1)"""
+        if self.use_legacy:
+            return await self._send_legacy(fcm_token, title, body, data)
+        else:
+            return await self._send_v1(fcm_token, title, body, data)
+    
+    async def _send_legacy(self, fcm_token: str, title: str, body: str, data: dict = None) -> bool:
+        """Send using Legacy API (Server Key)"""
         if not self.server_key:
             print("⚠️ FCM_SERVER_KEY not configured")
             return False
@@ -31,7 +49,6 @@ class FCMNotificationService:
                 'title': title,
                 'body': body,
                 'sound': 'default',
-                'badge': '1',
             },
             'priority': 'high',
             'data': data or {}
@@ -50,6 +67,44 @@ class FCMNotificationService:
             print(f"❌ Notification failed: {e}")
             return False
     
+    async def _send_v1(self, fcm_token: str, title: str, body: str, data: dict = None) -> bool:
+        """Send using V1 API (Service Account)"""
+        try:
+            from google.oauth2 import service_account
+            from google.auth.transport.requests import Request
+            
+            credentials = service_account.Credentials.from_service_account_file(
+                'firebase-service-account.json',
+                scopes=['https://www.googleapis.com/auth/firebase.messaging']
+            )
+            credentials.refresh(Request())
+            
+            headers = {
+                'Authorization': f'Bearer {credentials.token}',
+                'Content-Type': 'application/json',
+            }
+            
+            payload = {
+                'message': {
+                    'token': fcm_token,
+                    'notification': {'title': title, 'body': body},
+                    'data': data or {},
+                    'android': {'priority': 'high'}
+                }
+            }
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.post(self.fcm_url, headers=headers, json=payload) as response:
+                    if response.status == 200:
+                        print(f"✅ Notification sent: {title}")
+                        return True
+                    else:
+                        print(f"❌ FCM error: {response.status}")
+                        return False
+        except Exception as e:
+            print(f"❌ V1 API failed: {e}")
+            return False
+    
     async def send_match_notification(self, fcm_token: str, matched_user_name: str):
         """Send match notification"""
         return await self.send_notification(
@@ -59,12 +114,7 @@ class FCMNotificationService:
             data={'type': 'match', 'user_name': matched_user_name}
         )
     
-    async def send_message_notification(
-        self,
-        fcm_token: str,
-        sender_name: str,
-        message_preview: str
-    ):
+    async def send_message_notification(self, fcm_token: str, sender_name: str, message_preview: str):
         """Send new message notification"""
         preview = message_preview[:50] + '...' if len(message_preview) > 50 else message_preview
         return await self.send_notification(
@@ -81,15 +131,6 @@ class FCMNotificationService:
             title="❤️ Someone liked you!",
             body="Check who's interested in you",
             data={'type': 'like'}
-        )
-    
-    async def send_profile_view_notification(self, fcm_token: str, viewer_name: str):
-        """Send profile view notification"""
-        return await self.send_notification(
-            fcm_token=fcm_token,
-            title="👀 Profile View",
-            body=f"{viewer_name} viewed your profile",
-            data={'type': 'profile_view', 'viewer': viewer_name}
         )
 
 # Global instance
