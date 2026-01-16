@@ -12,7 +12,7 @@ class FCMService {
   static String? get fcmToken => _fcmToken;
 
   // Initialize FCM
-  static Future<void> initialize() async {
+  static Future<String?> initialize() async {
     try {
       // Request permission
       NotificationSettings settings = await _firebaseMessaging.requestPermission(
@@ -43,11 +43,15 @@ class FCMService {
           _fcmToken = newToken;
           print('🔄 FCM Token refreshed: $newToken');
         });
+        
+        return _fcmToken;
       } else {
         print('❌ FCM Permission denied');
+        return null;
       }
     } catch (e) {
       print('⚠️ FCM initialization failed (Firebase not configured): $e');
+      return null;
     }
   }
 

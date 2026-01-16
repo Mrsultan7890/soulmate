@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import '../utils/api_constants.dart';
 import '../utils/session_manager.dart';
+import 'fcm_service.dart';
 
 class AuthService extends ChangeNotifier {
   User? _currentUser;
@@ -98,6 +99,16 @@ class AuthService extends ChangeNotifier {
         
         await _saveAuthData();
         
+        // Save FCM token to backend
+        try {
+          final fcmToken = await FCMService.initialize();
+          if (fcmToken != null && _token != null) {
+            await FCMService.saveFCMToken(fcmToken, _token!);
+          }
+        } catch (e) {
+          print('FCM token save failed: $e');
+        }
+        
         _isLoading = false;
         notifyListeners();
         return true;
@@ -159,6 +170,16 @@ class AuthService extends ChangeNotifier {
         _currentUser = User.fromJson(data['user']);
         
         await _saveAuthData();
+        
+        // Save FCM token
+        try {
+          final fcmToken = FCMService.fcmToken;
+          if (fcmToken != null && _token != null) {
+            await FCMService.saveFCMToken(fcmToken, _token!);
+          }
+        } catch (e) {
+          print('FCM save failed: $e');
+        }
         
         _isLoading = false;
         notifyListeners();

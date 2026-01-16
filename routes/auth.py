@@ -146,7 +146,7 @@ async def register(user: UserCreate, db = Depends(get_db)):
         user=user_profile
     )
 
-@router.post("/login", response_model=Token)
+@router.post("/login")
 async def login(user_login: UserLogin, db = Depends(get_db)):
     # Get user
     user = await db.fetchone("SELECT * FROM users WHERE email = ?", (user_login.email,))
@@ -194,11 +194,28 @@ async def login(user_login: UserLogin, db = Depends(get_db)):
         created_at=user_dict.get("created_at")
     )
     
-    return Token(
-        access_token=access_token,
-        token_type="bearer",
-        user=user_profile
-    )
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user_dict["id"],
+            "email": user_dict["email"],
+            "name": user_dict["name"],
+            "age": user_dict.get("age"),
+            "gender": user_dict.get("gender"),
+            "bio": user_dict.get("bio"),
+            "location": user_dict.get("location"),
+            "latitude": user_dict.get("latitude"),
+            "longitude": user_dict.get("longitude"),
+            "interests": safe_json_loads(user_dict.get("interests"), []),
+            "relationship_intent": user_dict.get("relationship_intent"),
+            "profile_images": safe_json_loads(user_dict.get("profile_images"), []),
+            "preferences": safe_json_loads(user_dict.get("preferences"), {}),
+            "is_verified": bool(user_dict.get("is_verified", 0)),
+            "is_premium": bool(user_dict.get("is_premium", 0)),
+            "created_at": user_dict.get("created_at")
+        }
+    }
 
 @router.get("/me")
 async def get_current_user_profile(current_user: dict = Depends(get_current_user)):
@@ -228,9 +245,7 @@ async def get_current_user_profile(current_user: dict = Depends(get_current_user
         "relationship_intent": current_user.get("relationship_intent"),
         "profile_images": image_urls,
         "preferences": safe_json_loads(current_user.get("preferences"), {}),
-        "is_verified": current_user.get("is_verified", False),
-        "is_premium": current_user.get("is_premium", False),
-        "created_at": current_user.get("created_at"),
-        "avatar_data": safe_json_loads(current_user.get("avatar_data"), {}),
-        "is_face_verified": current_user.get("is_face_verified", False)
+        "is_verified": bool(current_user.get("is_verified", 0)),
+        "is_premium": bool(current_user.get("is_premium", 0)),
+        "created_at": current_user.get("created_at")
     }
