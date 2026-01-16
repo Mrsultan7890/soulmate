@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../utils/api_constants.dart';
+import 'notification_service.dart';
 
 class ChatService extends ChangeNotifier {
   final Map<int, List<Map<String, dynamic>>> _messagesByMatch = {};
@@ -95,6 +96,13 @@ class ChatService extends ChangeNotifier {
               _messagesByMatch[matchId] = [];
             }
             _messagesByMatch[matchId]!.add(newMessage);
+            
+            // Show notification for new message
+            NotificationService.showNotification(
+              'New Message',
+              newMessage['content'] ?? 'You have a new message',
+            );
+            
             notifyListeners();
           }
         },

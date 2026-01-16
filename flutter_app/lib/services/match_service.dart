@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../models/match.dart';
 import '../utils/api_constants.dart';
+import 'notification_service.dart';
 
 class MatchService extends ChangeNotifier {
   List<Match> _matches = [];
@@ -35,6 +36,13 @@ class MatchService extends ChangeNotifier {
         if (data['is_match'] == true) {
           // Fetch the new match details
           await fetchMatches(token);
+          
+          // Show notification
+          if (_matches.isNotEmpty) {
+            final match = _matches.first;
+            await NotificationService.showMatchNotification(match.otherUser.name);
+          }
+          
           return data;
         }
         return data;

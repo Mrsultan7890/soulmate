@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
+import '../../services/fcm_service.dart';
 import '../../utils/theme.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -35,6 +36,16 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     if (success) {
+      // Save FCM token after successful login
+      try {
+        final fcmToken = FCMService.fcmToken;
+        if (fcmToken != null && authService.token != null) {
+          await FCMService.saveFCMToken(fcmToken, authService.token!);
+        }
+      } catch (e) {
+        print('FCM token save error: $e');
+      }
+      
       Navigator.of(context).pushReplacementNamed('/home');
     } else {
       ScaffoldMessenger.of(context).showSnackBar(

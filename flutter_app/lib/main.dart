@@ -16,6 +16,7 @@ import 'services/safety_service.dart';
 import 'services/location_service.dart';
 import 'services/enhanced_chat_service.dart';
 import 'services/fcm_service.dart';
+import 'services/notification_service.dart';
 import 'utils/theme.dart';
 
 // Background message handler
@@ -28,13 +29,17 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
+  // Initialize local notifications
+  await NotificationService.initialize();
+  
   // Initialize Firebase (only if google-services.json exists)
   try {
     await Firebase.initializeApp();
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
     await FCMService.initialize();
+    print('✅ Firebase initialized successfully');
   } catch (e) {
-    print('⚠️ Firebase not configured: $e');
+    print('⚠️ Firebase not configured (optional): $e');
   }
   
   SystemChrome.setPreferredOrientations([

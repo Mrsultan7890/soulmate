@@ -13,37 +13,41 @@ class FCMService {
 
   // Initialize FCM
   static Future<void> initialize() async {
-    // Request permission
-    NotificationSettings settings = await _firebaseMessaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-      provisional: false,
-    );
+    try {
+      // Request permission
+      NotificationSettings settings = await _firebaseMessaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        provisional: false,
+      );
 
-    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      print('✅ FCM Permission granted');
-      
-      // Get FCM token
-      _fcmToken = await _firebaseMessaging.getToken();
-      print('📱 FCM Token: $_fcmToken');
-      
-      // Initialize local notifications
-      await _initializeLocalNotifications();
-      
-      // Handle foreground messages
-      FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
-      
-      // Handle background messages
-      FirebaseMessaging.onMessageOpenedApp.listen(_handleBackgroundMessage);
-      
-      // Handle token refresh
-      _firebaseMessaging.onTokenRefresh.listen((newToken) {
-        _fcmToken = newToken;
-        print('🔄 FCM Token refreshed: $newToken');
-      });
-    } else {
-      print('❌ FCM Permission denied');
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+        print('✅ FCM Permission granted');
+        
+        // Get FCM token
+        _fcmToken = await _firebaseMessaging.getToken();
+        print('📱 FCM Token: $_fcmToken');
+        
+        // Initialize local notifications
+        await _initializeLocalNotifications();
+        
+        // Handle foreground messages
+        FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+        
+        // Handle background messages
+        FirebaseMessaging.onMessageOpenedApp.listen(_handleBackgroundMessage);
+        
+        // Handle token refresh
+        _firebaseMessaging.onTokenRefresh.listen((newToken) {
+          _fcmToken = newToken;
+          print('🔄 FCM Token refreshed: $newToken');
+        });
+      } else {
+        print('❌ FCM Permission denied');
+      }
+    } catch (e) {
+      print('⚠️ FCM initialization failed (Firebase not configured): $e');
     }
   }
 
