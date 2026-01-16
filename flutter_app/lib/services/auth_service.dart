@@ -138,7 +138,24 @@ class AuthService extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        print('Login response: $data');
+        
+        if (data == null || data is! Map<String, dynamic>) {
+          _error = 'Invalid response from server';
+          _isLoading = false;
+          notifyListeners();
+          return false;
+        }
+        
         _token = data['access_token'];
+        
+        if (data['user'] == null || data['user'] is! Map<String, dynamic>) {
+          _error = 'Invalid user data received';
+          _isLoading = false;
+          notifyListeners();
+          return false;
+        }
+        
         _currentUser = User.fromJson(data['user']);
         
         await _saveAuthData();
@@ -154,6 +171,7 @@ class AuthService extends ChangeNotifier {
         return false;
       }
     } catch (e) {
+      print('Login error: $e');
       _error = 'Network error: ${e.toString()}';
       _isLoading = false;
       notifyListeners();
