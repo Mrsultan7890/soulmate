@@ -60,6 +60,9 @@ async def swipe_user(
                     await db.commit()
                     is_match = True
                     
+                    # Send notification service alert
+                    await send_match_notification(current_user["id"], swipe.swiped_user_id)
+                    
                     # Send FCM notification
                     from services.fcm_notification_service import fcm_service
                     other_user = await db.fetchone("SELECT fcm_token, name FROM users WHERE id = ?", (swipe.swiped_user_id,))

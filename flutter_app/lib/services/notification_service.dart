@@ -93,7 +93,7 @@ class NotificationService {
       'likes',
       'Likes',
       channelDescription: 'New like notifications',
-      importance: Importance.default_,
+      importance: Importance.defaultImportance,
       priority: Priority.defaultPriority,
       icon: '@mipmap/ic_launcher',
     );

@@ -76,16 +76,35 @@ class TelegramService:
     async def get_file_url(self, file_id: str) -> str:
         """Get file URL from Telegram"""
         try:
+            print(f"[TelegramService] Getting file URL for: {file_id[:50]}...")
+            print(f"[TelegramService] Bot token: {self.bot_token[:20]}...")
+            
             url = f"{self.base_url}/getFile"
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, params={'file_id': file_id}) as response:
+                    print(f"[TelegramService] Response status: {response.status}")
+                    
                     if response.status == 200:
                         data = await response.json()
-                        file_path = data['result']['file_path']
-                        return f"https://api.telegram.org/file/bot{self.bot_token}/{file_path}"
+                        print(f"[TelegramService] Response data: {data}")
+                        
+                        if data.get('ok'):
+                            file_path = data['result']['file_path']
+                            final_url = f"https://api.telegram.org/file/bot{self.bot_token}/{file_path}"
+                            print(f"[TelegramService] Final URL: {final_url[:80]}...")
+                            return final_url
+                        else:
+                            print(f"[TelegramService] API returned ok=false: {data}")
+                    else:
+                        error_text = await response.text()
+                        print(f"[TelegramService] Error response: {error_text}")
+            
+            print(f"[TelegramService] Returning placeholder (no success)")
             return "https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=HeartLink"
         except Exception as e:
-            print(f"Error getting file URL: {e}")
+            print(f"[TelegramService] Exception: {e}")
+            import traceback
+            traceback.print_exc()
             return "https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=HeartLink"
 
 # Global instance
@@ -109,9 +128,17 @@ async def upload_image_to_telegram(image_data: str, is_base64: bool = True):
 async def get_image_url(file_id: str):
     """Helper function to get image URL"""
     try:
+        print(f"[get_image_url] Fetching URL for file_id: {file_id[:50]}...")
+        
         if file_id.startswith('placeholder_'):
+            print(f"[get_image_url] Placeholder detected, returning placeholder URL")
             return "https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=HeartLink"
-        return await telegram_service.get_file_url(file_id)
+        
+        url = await telegram_service.get_file_url(file_id)
+        print(f"[get_image_url] Got URL: {url[:80]}...")
+        return url
     except Exception as e:
-        print(f"Get URL failed: {e}")
+        print(f"[get_image_url] ERROR: {e}")
+        import traceback
+        traceback.print_exc()
         return "https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=HeartLink"

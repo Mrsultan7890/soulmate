@@ -8,6 +8,7 @@ from routes.auth import get_current_user
 from config.database import get_db
 from services.websocket_manager import manager
 from services.anti_scam_service import AntiScamService
+from services.notification_service import send_message_notification
 
 router = APIRouter()
 
@@ -148,6 +149,38 @@ async def send_message(
             created_at=msg_dict["created_at"],
             sender_name=msg_dict["sender_name"]
         )
+        
+        # Send WebSocket notification to receiver
+        receiver_id = match["user1_id"] if match["user2_id"] == current_user["id"] else match["user2_id"]
+        
+        # Send Firebase push notification
+        try:
+            from services.fcm_notification_service import fcm_service
+            receiver = await db.fetchone("SELECT fcm_token, name FROM users WHERE id = ?", (receiver_id,))
+            if receiver and receiver['fcm_token']:
+                await fcm_service.send_message_notification(
+                    fcm_token=receiver['fcm_token'],
+                    sender_name=current_user['name'],
+                    message_content=message.content
+                )
+        except Exception as e:
+            print(f"FCM notification error: {e}")
+        
+        # Send real-time notification via WebSocket
+        await manager.send_message_to_user(receiver_id, {
+            "type": "new_message",
+            "message": {
+                "id": msg_dict["id"],
+                "match_id": msg_dict["match_id"],
+                "sender_id": msg_dict["sender_id"],
+                "content": msg_dict["content"],
+                "sender_name": msg_dict["sender_name"],
+                "created_at": msg_dict["created_at"]
+            }
+        })
+        
+        # Send notification service alert
+        await send_message_notification(current_user["id"], receiver_id, message.content)
         
         return new_message
         

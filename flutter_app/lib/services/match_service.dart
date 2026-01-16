@@ -40,7 +40,8 @@ class MatchService extends ChangeNotifier {
           // Show notification
           if (_matches.isNotEmpty) {
             final match = _matches.first;
-            await NotificationService.showMatchNotification(match.otherUser.name);
+            final otherUser = match.user1Profile;
+            await NotificationService.showMatchNotification(otherUser.name);
           }
           
           return data;

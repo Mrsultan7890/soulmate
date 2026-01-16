@@ -114,9 +114,9 @@ class FCMNotificationService:
             data={'type': 'match', 'user_name': matched_user_name}
         )
     
-    async def send_message_notification(self, fcm_token: str, sender_name: str, message_preview: str):
+    async def send_message_notification(self, fcm_token: str, sender_name: str, message_content: str):
         """Send new message notification"""
-        preview = message_preview[:50] + '...' if len(message_preview) > 50 else message_preview
+        preview = message_content[:50] + '...' if len(message_content) > 50 else message_content
         return await self.send_notification(
             fcm_token=fcm_token,
             title=f"💬 {sender_name}",
