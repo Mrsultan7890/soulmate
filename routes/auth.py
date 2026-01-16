@@ -31,6 +31,15 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
+def safe_json_loads(value, default):
+    """Safely parse JSON with fallback"""
+    if not value:
+        return default
+    try:
+        return json.loads(value)
+    except:
+        return default
+
 async def get_current_user(token: str = Depends(oauth2_scheme), db = Depends(get_db)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -120,13 +129,15 @@ async def register(user: UserCreate, db = Depends(get_db)):
         location=user_dict["location"],
         latitude=user_dict.get("latitude"),
         longitude=user_dict.get("longitude"),
-        interests=json.loads(user_dict.get("interests", "[]")) if user_dict.get("interests") else [],
+        interests=safe_json_loads(user_dict.get("interests"), []),
         relationship_intent=user_dict.get("relationship_intent"),
-        profile_images=json.loads(user_dict["profile_images"]),
-        preferences=json.loads(user_dict["preferences"]),
-        is_verified=user_dict["is_verified"],
-        is_premium=user_dict["is_premium"],
-        created_at=user_dict["created_at"]
+        profile_images=safe_json_loads(user_dict.get("profile_images"), []),
+        preferences=safe_json_loads(user_dict.get("preferences"), {}),
+        avatar_data=safe_json_loads(user_dict.get("avatar_data"), {}),
+        is_verified=user_dict.get("is_verified", False),
+        is_premium=user_dict.get("is_premium", False),
+        is_face_verified=user_dict.get("is_face_verified", False),
+        created_at=user_dict.get("created_at")
     )
     
     return Token(
@@ -172,13 +183,15 @@ async def login(user_login: UserLogin, db = Depends(get_db)):
         location=user_dict["location"],
         latitude=user_dict.get("latitude"),
         longitude=user_dict.get("longitude"),
-        interests=json.loads(user_dict.get("interests", "[]")) if user_dict.get("interests") else [],
+        interests=safe_json_loads(user_dict.get("interests"), []),
         relationship_intent=user_dict.get("relationship_intent"),
-        profile_images=json.loads(user_dict["profile_images"]),
-        preferences=json.loads(user_dict["preferences"]),
-        is_verified=user_dict["is_verified"],
-        is_premium=user_dict["is_premium"],
-        created_at=user_dict["created_at"]
+        profile_images=safe_json_loads(user_dict.get("profile_images"), []),
+        preferences=safe_json_loads(user_dict.get("preferences"), {}),
+        avatar_data=safe_json_loads(user_dict.get("avatar_data"), {}),
+        is_verified=user_dict.get("is_verified", False),
+        is_premium=user_dict.get("is_premium", False),
+        is_face_verified=user_dict.get("is_face_verified", False),
+        created_at=user_dict.get("created_at")
     )
     
     return Token(
@@ -192,7 +205,7 @@ async def get_current_user_profile(current_user: dict = Depends(get_current_user
     from services.telegram_service import get_image_url
     
     # Convert file_ids to URLs
-    profile_images = json.loads(current_user.get("profile_images", "[]"))
+    profile_images = safe_json_loads(current_user.get("profile_images"), [])
     image_urls = []
     for file_id in profile_images:
         try:
@@ -211,13 +224,13 @@ async def get_current_user_profile(current_user: dict = Depends(get_current_user
         "location": current_user.get("location"),
         "latitude": current_user.get("latitude"),
         "longitude": current_user.get("longitude"),
-        "interests": json.loads(current_user.get("interests", "[]")),
+        "interests": safe_json_loads(current_user.get("interests"), []),
         "relationship_intent": current_user.get("relationship_intent"),
         "profile_images": image_urls,
-        "preferences": json.loads(current_user.get("preferences", "{}")),
+        "preferences": safe_json_loads(current_user.get("preferences"), {}),
         "is_verified": current_user.get("is_verified", False),
         "is_premium": current_user.get("is_premium", False),
         "created_at": current_user.get("created_at"),
-        "avatar_data": current_user.get("avatar_data"),
+        "avatar_data": safe_json_loads(current_user.get("avatar_data"), {}),
         "is_face_verified": current_user.get("is_face_verified", False)
     }

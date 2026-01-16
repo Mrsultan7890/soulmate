@@ -10,6 +10,12 @@ class UserCreate(BaseModel):
     gender: Optional[str] = None
     bio: Optional[str] = None
     interests: Optional[List[str]] = []
+    location: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    relationship_intent: Optional[str] = None
+    profile_images: Optional[List[str]] = []
+    preferences: Optional[dict] = {}
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -27,9 +33,17 @@ class UserProfile(BaseModel):
     gender: Optional[str] = None
     bio: Optional[str] = None
     interests: Optional[List[str]] = []
-    avatar_data: Optional[dict] = None
+    avatar_data: Optional[dict] = {}
     is_face_verified: bool = False
     created_at: Optional[str] = None
+    location: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    relationship_intent: Optional[str] = None
+    profile_images: Optional[List[str]] = []
+    preferences: Optional[dict] = {}
+    is_verified: bool = False
+    is_premium: bool = False
     
     class Config:
         from_attributes = True
