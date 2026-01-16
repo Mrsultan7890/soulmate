@@ -241,14 +241,14 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> {
             height: 100,
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: _detectedGender == 'Male' 
+                colors: _detectedGender == 'male' 
                     ? [Colors.blue.shade400, Colors.blue.shade600]
                     : [Colors.pink.shade400, Colors.pink.shade600],
               ),
               shape: BoxShape.circle,
             ),
             child: Icon(
-              _detectedGender == 'Male' ? Icons.male : Icons.female,
+              _detectedGender == 'male' ? Icons.male : Icons.female,
               size: 50,
               color: Colors.white,
             ),
@@ -257,17 +257,17 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             decoration: BoxDecoration(
-              color: _detectedGender == 'Male' 
+              color: _detectedGender == 'male' 
                   ? Colors.blue.shade50
                   : Colors.pink.shade50,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              'Gender: $_detectedGender',
+              'Gender: ${_detectedGender == "male" ? "Male" : "Female"}',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: _detectedGender == 'Male' 
+                color: _detectedGender == 'male' 
                     ? Colors.blue.shade700
                     : Colors.pink.shade700,
               ),

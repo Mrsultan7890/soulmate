@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../services/auth_service.dart';
 import '../services/user_service.dart';
 import '../utils/theme.dart';
@@ -110,14 +111,25 @@ class _PhotoGalleryWidgetState extends State<PhotoGalleryWidget> {
                   ),
                   itemCount: imageCount,
                   itemBuilder: (context, index) {
+                    final imageUrl = user!.profileImages[index];
                     return Stack(
                       children: [
-                        Container(
-                          decoration: BoxDecoration(
-                            color: AppTheme.primaryColor.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(12),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: CachedNetworkImage(
+                            imageUrl: imageUrl,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: double.infinity,
+                            placeholder: (context, url) => Container(
+                              color: AppTheme.primaryColor.withOpacity(0.2),
+                              child: const Center(child: CircularProgressIndicator()),
+                            ),
+                            errorWidget: (context, url, error) => Container(
+                              color: AppTheme.primaryColor.withOpacity(0.2),
+                              child: const Icon(Icons.error, color: AppTheme.errorColor),
+                            ),
                           ),
-                          child: const Center(child: Icon(Icons.image, color: AppTheme.primaryColor, size: 40)),
                         ),
                         Positioned(
                           top: 4,
