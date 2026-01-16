@@ -17,16 +17,51 @@ async def swipe_user(
 ):
     """Swipe on a user (like or pass)"""
     try:
-        # Simple swipe response for now (no database storage)
+        # Check if already swiped
+        existing = await db.fetchone(
+            "SELECT * FROM swipes WHERE swiper_id = ? AND swiped_id = ?",
+            (current_user["id"], swipe.swiped_user_id)
+        )
+        
+        if existing:
+            return SwipeResponse(is_match=False, match_id=None)
+        
+        # Store swipe
+        await db.execute(
+            "INSERT INTO swipes (swiper_id, swiped_id, is_like) VALUES (?, ?, ?)",
+            (current_user["id"], swipe.swiped_user_id, swipe.is_like)
+        )
+        await db.commit()
+        
+        # Check for mutual like (match)
         is_match = False
         match_id = None
         
-        # Random match chance for demo (10%)
         if swipe.is_like:
-            import random
-            is_match = random.random() < 0.1
-            if is_match:
-                match_id = random.randint(1000, 9999)
+            mutual_like = await db.fetchone(
+                "SELECT * FROM swipes WHERE swiper_id = ? AND swiped_id = ? AND is_like = 1",
+                (swipe.swiped_user_id, current_user["id"])
+            )
+            
+            if mutual_like:
+                # Check if match already exists
+                existing_match = await db.fetchone(
+                    "SELECT * FROM matches WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)",
+                    (current_user["id"], swipe.swiped_user_id, swipe.swiped_user_id, current_user["id"])
+                )
+                
+                if not existing_match:
+                    # Create match
+                    cursor = await db.execute(
+                        "INSERT INTO matches (user1_id, user2_id) VALUES (?, ?)",
+                        (current_user["id"], swipe.swiped_user_id)
+                    )
+                    match_id = cursor.lastrowid
+                    await db.commit()
+                    is_match = True
+                else:
+                    match_id = existing_match['id']
+                    is_match = True
         
         return SwipeResponse(is_match=is_match, match_id=match_id)
         

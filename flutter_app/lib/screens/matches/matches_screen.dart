@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/match_service.dart';
+import '../../models/match.dart';
+import '../../models/user.dart';
 import '../../utils/theme.dart';
 import '../chat/chat_screen.dart';
 
@@ -42,6 +44,24 @@ class _MatchesScreenState extends State<MatchesScreen> {
                   builder: (context, matchService, child) {
                     if (matchService.isLoading) {
                       return const Center(child: CircularProgressIndicator());
+                    }
+
+                    if (matchService.error != null) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.error_outline, size: 60, color: AppTheme.errorColor),
+                            SizedBox(height: 16),
+                            Text('Error: ${matchService.error}'),
+                            SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: _loadMatches,
+                              child: Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      );
                     }
 
                     if (matchService.matches.isEmpty) {
@@ -127,9 +147,9 @@ class _MatchesScreenState extends State<MatchesScreen> {
     );
   }
 
-  Widget _buildMatchCard(dynamic match) {
-    final otherUser = match['other_user'];
-    final matchId = match['id'];
+  Widget _buildMatchCard(Match match) {
+    final otherUser = match.user1Profile; // Since we store other_user in both fields
+    final matchId = match.id;
     
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -149,21 +169,19 @@ class _MatchesScreenState extends State<MatchesScreen> {
         leading: CircleAvatar(
           radius: 30,
           backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-          backgroundImage: otherUser['profile_images'] != null && 
-                          (otherUser['profile_images'] as List).isNotEmpty
-              ? NetworkImage((otherUser['profile_images'] as List)[0])
+          backgroundImage: otherUser.profileImages.isNotEmpty
+              ? NetworkImage(otherUser.profileImages[0])
               : null,
-          child: otherUser['profile_images'] == null || 
-                 (otherUser['profile_images'] as List).isEmpty
+          child: otherUser.profileImages.isEmpty
               ? const Icon(Icons.person, color: AppTheme.primaryColor)
               : null,
         ),
         title: Text(
-          '${otherUser['name']}, ${otherUser['age'] ?? ''}',
+          '${otherUser.name}, ${otherUser.age ?? ""}',
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         subtitle: Text(
-          otherUser['bio'] ?? 'No bio available',
+          otherUser.bio ?? 'No bio available',
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
@@ -182,11 +200,17 @@ class _MatchesScreenState extends State<MatchesScreen> {
     );
   }
 
-  void _openChat(int matchId, Map<String, dynamic> otherUser) {
+  void _openChat(int matchId, User otherUser) {
     // Create a simplified match object for chat
     final matchForChat = {
       'id': matchId,
-      'other_user': otherUser,
+      'other_user': {
+        'id': otherUser.id,
+        'name': otherUser.name,
+        'age': otherUser.age,
+        'bio': otherUser.bio,
+        'profile_images': otherUser.profileImages,
+      },
     };
     
     Navigator.push(

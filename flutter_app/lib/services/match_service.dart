@@ -57,14 +57,21 @@ class MatchService extends ChangeNotifier {
         headers: ApiConstants.getHeaders(token: token),
       );
 
+      print('Matches API response: ${response.statusCode}');
+      print('Matches API body: ${response.body}');
+
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
+        print('Total matches received: ${data.length}');
         _matches = data.map((match) => Match.fromJson(match)).toList();
+        print('Matches parsed: ${_matches.length}');
       } else {
         _error = 'Failed to fetch matches';
+        print('Error: $_error');
       }
     } catch (e) {
       _error = 'Network error: ${e.toString()}';
+      print('Exception in fetchMatches: $e');
     }
 
     _isLoading = false;

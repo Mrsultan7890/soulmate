@@ -22,6 +22,24 @@ class Match {
   });
 
   factory Match.fromJson(Map<String, dynamic> json) {
+    // Handle backend response format with 'other_user'
+    if (json.containsKey('other_user')) {
+      final otherUser = json['other_user'];
+      return Match(
+        id: json['id'],
+        user1Id: json['user1_id'] ?? 0,
+        user2Id: json['user2_id'] ?? 0,
+        user1Profile: User.fromJson(otherUser),
+        user2Profile: User.fromJson(otherUser),
+        createdAt: DateTime.parse(json['created_at']),
+        lastMessage: json['last_message'],
+        lastMessageTime: json['last_message_time'] != null
+            ? DateTime.parse(json['last_message_time'])
+            : null,
+      );
+    }
+    
+    // Handle old format with user1_profile and user2_profile
     return Match(
       id: json['id'],
       user1Id: json['user1_id'],
