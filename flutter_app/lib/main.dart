@@ -28,12 +28,14 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize Firebase
-  await Firebase.initializeApp();
-  
-  // Initialize FCM
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-  await FCMService.initialize();
+  // Initialize Firebase (only if google-services.json exists)
+  try {
+    await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    await FCMService.initialize();
+  } catch (e) {
+    print('⚠️ Firebase not configured: $e');
+  }
   
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,

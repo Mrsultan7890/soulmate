@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     # Telegram Bot
     TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
     TELEGRAM_CHAT_ID: str = os.getenv("TELEGRAM_CHAT_ID", "@storagecat")
+    TELEGRAM_ADMIN_CHAT_ID: str = os.getenv("TELEGRAM_ADMIN_CHAT_ID", "@storagecat")
+    
+    # Firebase Cloud Messaging
+    FCM_SERVER_KEY: str = os.getenv("FCM_SERVER_KEY", "")
+    FIREBASE_PROJECT_ID: str = os.getenv("FIREBASE_PROJECT_ID", "heartlink")
     
     # App Settings
     APP_NAME: str = "HeartLink"
