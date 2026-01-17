@@ -227,6 +227,10 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  Future<void> refreshUser() async {
+    await getCurrentUser();
+  }
+
   Future<void> logout() async {
     await _clearStoredAuth();
     notifyListeners();
