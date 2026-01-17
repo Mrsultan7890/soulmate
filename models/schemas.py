@@ -80,13 +80,12 @@ class ImageUpload(BaseModel):
     image_type: Optional[str] = "profile"  # profile, verification, etc
 
 class SwipeCreate(BaseModel):
-    target_user_id: int
-    action: str  # 'like' or 'pass'
+    swiped_user_id: int
+    is_like: bool
 
 class SwipeResponse(BaseModel):
     is_match: bool
     match_id: Optional[int] = None
-    message: str
 
 class Match(BaseModel):
     id: int

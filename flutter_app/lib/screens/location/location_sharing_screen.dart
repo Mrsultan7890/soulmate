@@ -36,7 +36,7 @@ class _LocationSharingScreenState extends State<LocationSharingScreen> {
 
     try {
       final response = await http.get(
-        Uri.parse('${ApiConstants.baseUrl}/profile/shared-location/${widget.otherUserId}'),
+        Uri.parse('${ApiConstants.baseUrl}/api/profile/shared-location/${widget.otherUserId}'),
         headers: {'Authorization': 'Bearer ${authService.token}'},
       );
 

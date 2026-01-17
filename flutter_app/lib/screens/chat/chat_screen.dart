@@ -46,7 +46,7 @@ class _ChatScreenState extends State<ChatScreen> {
     
     try {
       await http.post(
-        Uri.parse('${ApiConstants.baseUrl}/profile/update-activity'),
+        Uri.parse('${ApiConstants.baseUrl}/api/profile/update-activity'),
         headers: {'Authorization': 'Bearer ${authService.token}'},
       );
     } catch (e) {
@@ -60,7 +60,7 @@ class _ChatScreenState extends State<ChatScreen> {
     
     try {
       final response = await http.get(
-        Uri.parse('${ApiConstants.baseUrl}/profile/activity-status/$userId'),
+        Uri.parse('${ApiConstants.baseUrl}/api/profile/activity-status/$userId'),
         headers: {'Authorization': 'Bearer ${authService.token}'},
       );
       if (response.statusCode == 200) {
@@ -509,7 +509,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('${ApiConstants.baseUrl}/profile/share-location'),
+        Uri.parse('${ApiConstants.baseUrl}/api/profile/share-location'),
         headers: {
           'Authorization': 'Bearer ${authService.token}',
           'Content-Type': 'application/json',

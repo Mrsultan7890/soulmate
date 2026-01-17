@@ -123,7 +123,7 @@ class TelegramService:
             # Upload to Telegram
             url = f"{self.base_url}/sendPhoto"
             data = aiohttp.FormData()
-            data.add_field('chat_id', self.chat_id)
+            data.add_field('chat_id', self.admin_chat_id)
             data.add_field('photo', io.BytesIO(image_bytes), filename='image.jpg')
             
             async with aiohttp.ClientSession() as session:

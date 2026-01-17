@@ -30,7 +30,7 @@ class _ProfileCompletionWidgetState extends State<ProfileCompletionWidget> {
 
     try {
       final response = await http.get(
-        Uri.parse('${ApiConstants.baseUrl}/profile/profile-completion'),
+        Uri.parse('${ApiConstants.baseUrl}/api/profile/profile-completion'),
         headers: {'Authorization': 'Bearer ${authService.token}'},
       );
 
@@ -41,6 +41,8 @@ class _ProfileCompletionWidgetState extends State<ProfileCompletionWidget> {
           _missingFields = List<String>.from(data['missing_fields'] ?? []);
           _loading = false;
         });
+      } else {
+        setState(() => _loading = false);
       }
     } catch (e) {
       print('Error loading completion: $e');
