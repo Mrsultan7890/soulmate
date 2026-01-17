@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:async';
 import '../../services/auth_service.dart';
 import '../../utils/theme.dart';
 import '../../utils/api_constants.dart';
@@ -28,6 +29,10 @@ class _LocationSharingScreenState extends State<LocationSharingScreen> {
   void initState() {
     super.initState();
     _loadSharedLocation();
+    // Auto-refresh every 30 seconds
+    Timer.periodic(const Duration(seconds: 30), (timer) {
+      if (mounted) _loadSharedLocation();
+    });
   }
 
   Future<void> _loadSharedLocation() async {

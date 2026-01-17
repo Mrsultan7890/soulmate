@@ -101,7 +101,7 @@ class AuthService extends ChangeNotifier {
         
         // Save FCM token to backend
         try {
-          final fcmToken = await FCMService.initialize();
+          final fcmToken = FCMService.fcmToken;
           if (fcmToken != null && _token != null) {
             print('💾 Saving FCM token: ${fcmToken.substring(0, 20)}...');
             await FCMService.saveFCMToken(fcmToken, _token!);
@@ -177,7 +177,7 @@ class AuthService extends ChangeNotifier {
         
         // Save FCM token to backend
         try {
-          final fcmToken = await FCMService.initialize();
+          final fcmToken = FCMService.fcmToken;
           if (fcmToken != null && _token != null) {
             print('💾 Saving FCM token: ${fcmToken.substring(0, 20)}...');
             await FCMService.saveFCMToken(fcmToken, _token!);

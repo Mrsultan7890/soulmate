@@ -1,4 +1,6 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter/material.dart';
+import 'dart:typed_data';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
@@ -23,17 +25,16 @@ class NotificationService {
   }
 
   static Future<void> _createNotificationChannels() async {
-    const matchChannel = AndroidNotificationChannel(
+    final matchChannel = AndroidNotificationChannel(
       'matches',
       'Matches',
       description: 'New match notifications',
       importance: Importance.high,
-      sound: RawResourceAndroidNotificationSound('match_sound'),
       enableVibration: true,
       vibrationPattern: Int64List.fromList([0, 1000, 500, 1000]),
     );
 
-    const messageChannel = AndroidNotificationChannel(
+    final messageChannel = AndroidNotificationChannel(
       'messages',
       'Messages',
       description: 'New message notifications',
@@ -42,7 +43,7 @@ class NotificationService {
       vibrationPattern: Int64List.fromList([0, 250, 250, 250]),
     );
 
-    const likeChannel = AndroidNotificationChannel(
+    final likeChannel = AndroidNotificationChannel(
       'likes',
       'Likes',
       description: 'New like notifications',
@@ -85,14 +86,14 @@ class NotificationService {
   static Future<void> showMatchNotification(String userName) async {
     await initialize();
 
-    const androidDetails = AndroidNotificationDetails(
+    final androidDetails = AndroidNotificationDetails(
       'matches',
       'Matches',
       channelDescription: 'New match notifications',
       importance: Importance.high,
       priority: Priority.high,
       icon: '@mipmap/ic_launcher',
-      color: Color(0xFFE91E63),
+      color: const Color(0xFFE91E63),
       styleInformation: BigTextStyleInformation(
         'You and $userName liked each other! Start chatting now.',
         htmlFormatBigText: true,
@@ -103,7 +104,7 @@ class NotificationService {
       vibrationPattern: Int64List.fromList([0, 1000, 500, 1000]),
     );
 
-    const notificationDetails = NotificationDetails(android: androidDetails);
+    final notificationDetails = NotificationDetails(android: androidDetails);
 
     await _notifications.show(
       DateTime.now().millisecond,
@@ -134,7 +135,7 @@ class NotificationService {
       vibrationPattern: Int64List.fromList([0, 250, 250, 250]),
     );
 
-    const notificationDetails = NotificationDetails(android: androidDetails);
+    final notificationDetails = NotificationDetails(android: androidDetails);
 
     await _notifications.show(
       DateTime.now().millisecond,
@@ -147,15 +148,15 @@ class NotificationService {
   static Future<void> showLikeNotification(String userName) async {
     await initialize();
 
-    const androidDetails = AndroidNotificationDetails(
+    final androidDetails = AndroidNotificationDetails(
       'likes',
       'Likes',
       channelDescription: 'New like notifications',
       importance: Importance.defaultImportance,
       priority: Priority.defaultPriority,
       icon: '@mipmap/ic_launcher',
-      color: Color(0xFFFF5722),
-      styleInformation: BigTextStyleInformation(
+      color: const Color(0xFFFF5722),
+      styleInformation: const BigTextStyleInformation(
         'Someone new is interested in you! Check who liked you.',
         htmlFormatBigText: true,
         contentTitle: '❤️ New Like',
@@ -165,7 +166,7 @@ class NotificationService {
       vibrationPattern: Int64List.fromList([0, 200]),
     );
 
-    const notificationDetails = NotificationDetails(android: androidDetails);
+    final notificationDetails = NotificationDetails(android: androidDetails);
 
     await _notifications.show(
       DateTime.now().millisecond,

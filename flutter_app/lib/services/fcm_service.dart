@@ -9,6 +9,9 @@ class FCMService {
   static final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   static final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
   static bool _initialized = false;
+  static String? _fcmToken;
+
+  static String? get fcmToken => _fcmToken;
 
   static Future<void> initialize() async {
     if (_initialized) return;
@@ -38,11 +41,15 @@ class FCMService {
     // Get and send FCM token to backend
     String? token = await _messaging.getToken();
     if (token != null) {
+      _fcmToken = token;
       await _sendTokenToBackend(token);
     }
 
     // Listen for token refresh
-    _messaging.onTokenRefresh.listen(_sendTokenToBackend);
+    _messaging.onTokenRefresh.listen((token) {
+      _fcmToken = token;
+      _sendTokenToBackend(token);
+    });
 
     // Handle foreground messages
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
@@ -106,5 +113,9 @@ class FCMService {
       body,
       notificationDetails,
     );
+  }
+
+  static Future<void> saveFCMToken(String token, String authToken) async {
+    await _sendTokenToBackend(token);
   }
 }

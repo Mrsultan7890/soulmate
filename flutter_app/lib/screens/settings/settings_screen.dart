@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../../services/auth_service.dart';
 import '../../utils/theme.dart';
+import '../../utils/api_constants.dart';
+import '../../utils/storage_helper.dart';
 import '../profile/edit_profile_screen.dart';
 import 'change_password_screen.dart';
 import 'blocked_users_screen.dart';
@@ -65,7 +69,9 @@ class SettingsScreen extends StatelessWidget {
                 await authService.logout();
                 if (context.mounted) Navigator.of(context).pushReplacementNamed('/login');
               }, isDestructive: true),
-              _buildTile(Icons.delete_forever, 'Delete Account', () {}, isDestructive: true),
+              _buildTile(Icons.delete_forever, 'Delete Account', () {
+                _showDeleteAccountDialog(context);
+              }, isDestructive: true),
             ]),
           ],
         ),
@@ -105,5 +111,66 @@ class SettingsScreen extends StatelessWidget {
       activeColor: AppTheme.primaryColor,
       onChanged: onChanged,
     );
+  }
+
+  void _showDeleteAccountDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Account'),
+        content: const Text(
+          'Are you sure you want to delete your account? This action cannot be undone and will permanently remove all your data, matches, and messages.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _deleteAccount(context);
+            },
+            style: TextButton.styleFrom(foregroundColor: AppTheme.errorColor),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteAccount(BuildContext context) async {
+    try {
+      final token = await StorageHelper.getToken();
+      if (token == null) return;
+
+      final response = await http.delete(
+        Uri.parse('${ApiConstants.baseUrl}${ApiConstants.deleteAccount}'),
+        headers: ApiConstants.getHeaders(token: token),
+      );
+
+      if (response.statusCode == 200) {
+        final authService = Provider.of<AuthService>(context, listen: false);
+        await authService.logout();
+        if (context.mounted) {
+          Navigator.of(context).pushReplacementNamed('/login');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Account deleted successfully')),
+          );
+        }
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to delete account')),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
   }
 }

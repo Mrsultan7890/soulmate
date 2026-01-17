@@ -798,6 +798,33 @@ async def update_fcm_token(
             detail=f"Failed to update FCM token: {str(e)}"
         )
 
+@router.delete("/account")
+async def delete_account(
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """Delete user account permanently"""
+    try:
+        user_id = current_user["id"]
+        
+        # Delete all user data
+        await db.execute("DELETE FROM messages WHERE sender_id = ?", (user_id,))
+        await db.execute("DELETE FROM matches WHERE user1_id = ? OR user2_id = ?", (user_id, user_id))
+        await db.execute("DELETE FROM swipes WHERE user_id = ? OR swiped_user_id = ?", (user_id, user_id))
+        await db.execute("DELETE FROM profile_views WHERE viewer_id = ? OR viewed_id = ?", (user_id, user_id))
+        await db.execute("DELETE FROM location_shares WHERE user_id = ?", (user_id,))
+        await db.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        
+        await db.commit()
+        
+        return {"message": "Account deleted successfully"}
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete account: {str(e)}"
+        )
+
 @router.put("/rich-profile")
 async def update_rich_profile(
     profile_data: dict,
