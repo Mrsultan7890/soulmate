@@ -561,6 +561,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (authService.token == null) return;
 
     try {
+      // First share location in backend
       final response = await http.post(
         Uri.parse('${ApiConstants.baseUrl}/api/profile/share-location'),
         headers: {
@@ -576,22 +577,24 @@ class _ChatScreenState extends State<ChatScreen> {
       );
 
       if (response.statusCode == 200) {
-        // Send location share message to chat
+        // Then send location message to chat
         String locationMessage = '📍 I shared my live location for $hours hours';
         if (emergencyName.isNotEmpty) {
           locationMessage += '\nEmergency contact: $emergencyName';
         }
         
-        await chatService.sendMessage(
+        final success = await chatService.sendMessage(
           token: authService.token!,
           matchId: widget.match['id'],
           content: locationMessage,
           messageType: 'location',
         );
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Location shared successfully')),
-        );
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Location shared successfully')),
+          );
+        }
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(

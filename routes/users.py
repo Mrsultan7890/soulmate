@@ -762,6 +762,37 @@ async def get_user_profile(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.post("/test-fcm-token")
+async def test_fcm_token(
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """Test endpoint to set dummy FCM token"""
+    try:
+        # Set a test FCM token
+        test_token = "test_fcm_token_" + str(current_user["id"]) + "_" + "dummy_token_for_testing"
+        
+        await db.execute(
+            "UPDATE users SET fcm_token = ? WHERE id = ?",
+            (test_token, current_user["id"])
+        )
+        await db.commit()
+        
+        # Verify
+        updated_user = await db.fetchone(
+            "SELECT fcm_token FROM users WHERE id = ?",
+            (current_user["id"],)
+        )
+        
+        return {
+            "message": "Test FCM token set",
+            "user_id": current_user["id"],
+            "token_set": updated_user["fcm_token"][:30] + "..." if updated_user["fcm_token"] else "NULL"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.put("/fcm-token")
 async def update_fcm_token(
     request: dict,

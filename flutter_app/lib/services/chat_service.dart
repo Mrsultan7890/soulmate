@@ -61,14 +61,7 @@ class ChatService extends ChangeNotifier {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final newMessage = data;
-        
-        if (_messagesByMatch[matchId] == null) {
-          _messagesByMatch[matchId] = [];
-        }
-        _messagesByMatch[matchId]!.add(newMessage);
-        notifyListeners();
+        // Don't add message here - WebSocket will handle it
         return true;
       }
       return false;

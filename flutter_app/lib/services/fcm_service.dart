@@ -59,8 +59,16 @@ class FCMService {
 
   static Future<void> _sendTokenToBackend(String token) async {
     try {
+      print('🔄 Attempting to send FCM token to backend...');
+      print('Token: ${token.substring(0, 20)}...');
+      
       final authToken = await StorageHelper.getToken();
-      if (authToken == null) return;
+      if (authToken == null) {
+        print('❌ No auth token found in storage');
+        return;
+      }
+      
+      print('✅ Auth token found: ${authToken.substring(0, 20)}...');
       
       final response = await http.put(
         Uri.parse('${ApiConstants.baseUrl}/api/users/fcm-token'),
@@ -68,13 +76,16 @@ class FCMService {
         body: jsonEncode({'fcm_token': token}),
       );
       
+      print('📡 FCM token API response: ${response.statusCode}');
+      print('📡 Response body: ${response.body}');
+      
       if (response.statusCode == 200) {
-        print('FCM token sent to backend: ${token.substring(0, 20)}...');
+        print('✅ FCM token sent to backend successfully');
       } else {
-        print('Failed to send FCM token: ${response.statusCode}');
+        print('❌ Failed to send FCM token: ${response.statusCode}');
       }
     } catch (e) {
-      print('Failed to send FCM token: $e');
+      print('❌ FCM token send error: $e');
     }
   }
 

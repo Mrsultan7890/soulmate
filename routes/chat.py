@@ -171,7 +171,7 @@ async def send_message(
             else:
                 print(f"❌ No FCM token for user {receiver_id}")
                 if receiver:
-                    print(f"User exists but fcm_token is: {receiver.get('fcm_token', 'NULL')}")
+                    print(f"User exists but fcm_token is: {receiver['fcm_token'] if receiver['fcm_token'] else 'NULL'}")
                 else:
                     print(f"User {receiver_id} not found in database")
             print(f"=== END MESSAGE NOTIFICATION ===")
