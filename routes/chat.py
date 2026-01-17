@@ -158,9 +158,10 @@ async def send_message(
             from services.fcm_notification_service import fcm_service
             receiver = await db.fetchone("SELECT fcm_token, name FROM users WHERE id = ?", (receiver_id,))
             print(f"\n=== MESSAGE NOTIFICATION ===")
-            print(f"Receiver: {receiver}")
+            print(f"Receiver ID: {receiver_id}")
+            print(f"Receiver data: {dict(receiver) if receiver else 'None'}")
             if receiver and receiver['fcm_token']:
-                print(f"Sending FCM to token: {receiver['fcm_token'][:20]}...")
+                print(f"FCM token found: {receiver['fcm_token'][:20]}...")
                 result = await fcm_service.send_message_notification(
                     fcm_token=receiver['fcm_token'],
                     sender_name=current_user['name'],
@@ -168,10 +169,16 @@ async def send_message(
                 )
                 print(f"FCM result: {result}")
             else:
-                print(f"No FCM token for user {receiver_id}")
+                print(f"❌ No FCM token for user {receiver_id}")
+                if receiver:
+                    print(f"User exists but fcm_token is: {receiver.get('fcm_token', 'NULL')}")
+                else:
+                    print(f"User {receiver_id} not found in database")
             print(f"=== END MESSAGE NOTIFICATION ===")
         except Exception as e:
             print(f"FCM notification error: {e}")
+            import traceback
+            traceback.print_exc()
         
         # Send real-time notification via WebSocket
         await manager.send_message_to_user(receiver_id, {

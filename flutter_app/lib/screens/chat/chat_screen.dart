@@ -9,6 +9,7 @@ import '../../utils/theme.dart';
 import '../../utils/api_constants.dart';
 import '../call/video_call_screen.dart';
 import '../user/user_profile_view_screen.dart';
+import '../location/location_sharing_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   final Map<String, dynamic> match;
@@ -259,22 +260,47 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildMessageBubble(dynamic message, bool isMe) {
+    final isLocationMessage = message['message_type'] == 'location';
+    
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: GestureDetector(
         onLongPress: () => _showMessageOptions(message, isMe),
+        onTap: isLocationMessage ? () => _viewSharedLocation(message) : null,
         child: Container(
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
           decoration: BoxDecoration(
             gradient: isMe ? AppTheme.primaryGradient : null,
-            color: isMe ? null : Colors.grey[200],
+            color: isMe ? null : (isLocationMessage ? Colors.orange[100] : Colors.grey[200]),
             borderRadius: BorderRadius.circular(20),
+            border: isLocationMessage ? Border.all(color: Colors.orange, width: 1) : null,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (isLocationMessage)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.location_on,
+                      color: isMe ? Colors.white : Colors.orange,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Live Location',
+                      style: TextStyle(
+                        color: isMe ? Colors.white : Colors.orange,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              if (isLocationMessage) const SizedBox(height: 4),
               Text(
                 message['content'] ?? '',
                 style: TextStyle(
@@ -282,6 +308,18 @@ class _ChatScreenState extends State<ChatScreen> {
                   fontSize: 14,
                 ),
               ),
+              if (isLocationMessage)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    'Tap to view location',
+                    style: TextStyle(
+                      color: isMe ? Colors.white70 : Colors.orange[700],
+                      fontSize: 11,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
               const SizedBox(height: 4),
               Row(
                 mainAxisSize: MainAxisSize.min,
@@ -519,6 +557,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _shareLocation(int hours, String emergencyName, String emergencyPhone) async {
     final authService = Provider.of<AuthService>(context, listen: false);
+    final chatService = Provider.of<ChatService>(context, listen: false);
     if (authService.token == null) return;
 
     try {
@@ -537,6 +576,19 @@ class _ChatScreenState extends State<ChatScreen> {
       );
 
       if (response.statusCode == 200) {
+        // Send location share message to chat
+        String locationMessage = '📍 I shared my live location for $hours hours';
+        if (emergencyName.isNotEmpty) {
+          locationMessage += '\nEmergency contact: $emergencyName';
+        }
+        
+        await chatService.sendMessage(
+          token: authService.token!,
+          matchId: widget.match['id'],
+          content: locationMessage,
+          messageType: 'location',
+        );
+        
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Location shared successfully')),
         );
@@ -546,6 +598,19 @@ class _ChatScreenState extends State<ChatScreen> {
         SnackBar(content: Text('Error: $e')),
       );
     }
+  }
+
+  void _viewSharedLocation(dynamic message) {
+    final otherUser = widget.match['other_user'];
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LocationSharingScreen(
+          otherUserId: otherUser['id'],
+          otherUserName: otherUser['name'],
+        ),
+      ),
+    );
   }
 
   Widget _buildMessageInput() {

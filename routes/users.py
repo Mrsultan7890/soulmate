@@ -772,6 +772,10 @@ async def update_fcm_token(
     try:
         fcm_token = request.get('fcm_token')
         
+        print(f"\n=== FCM TOKEN UPDATE ===")
+        print(f"User ID: {current_user['id']}")
+        print(f"Token received: {fcm_token[:20] if fcm_token else 'None'}...")
+        
         if not fcm_token:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -785,6 +789,14 @@ async def update_fcm_token(
         )
         await db.commit()
         
+        # Verify update
+        updated_user = await db.fetchone(
+            "SELECT fcm_token FROM users WHERE id = ?",
+            (current_user["id"],)
+        )
+        print(f"Token saved in DB: {updated_user['fcm_token'][:20] if updated_user and updated_user['fcm_token'] else 'None'}...")
+        print(f"=== END FCM TOKEN UPDATE ===")
+        
         return {
             "message": "FCM token updated successfully",
             "token_preview": fcm_token[:20] + "..."
@@ -793,6 +805,7 @@ async def update_fcm_token(
     except HTTPException:
         raise
     except Exception as e:
+        print(f"FCM token update error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update FCM token: {str(e)}"
