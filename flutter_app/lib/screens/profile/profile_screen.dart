@@ -10,6 +10,7 @@ import '../settings/settings_screen.dart';
 import '../verification/gender_verification_screen.dart';
 import 'rich_profile_screen.dart';
 import 'profile_views_screen.dart';
+import '../games/friend_zone_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -298,15 +299,15 @@ class ProfileScreen extends StatelessWidget {
             subtitle: 'Add job, education, lifestyle',
           ),
           _buildSettingsTile(
-            Icons.visibility,
-            'Profile Views',
+            Icons.games,
+            'Friend Zone',
             () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const ProfileViewsScreen()),
+                MaterialPageRoute(builder: (context) => const FriendZoneScreen()),
               );
             },
-            subtitle: 'See who viewed your profile',
+            subtitle: 'Play games with friends',
           ),
           _buildSettingsTile(Icons.settings, 'Settings', () {
             Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen()));

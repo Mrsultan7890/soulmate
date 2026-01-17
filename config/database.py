@@ -234,6 +234,11 @@ async def init_db():
     await db.commit()
     print("✅ Database tables initialized")
     
+    # Initialize game tables
+    from .game_database import init_game_tables
+    await init_game_tables(db)
+    print("✅ Game tables initialized")
+    
     # Add missing columns if they don't exist
     try:
         # Check if fcm_token column exists
