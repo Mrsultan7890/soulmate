@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
 import 'dart:async';
 import '../../services/auth_service.dart';
@@ -147,11 +148,7 @@ class _LocationSharingScreenState extends State<LocationSharingScreen> {
         Padding(
           padding: const EdgeInsets.all(16),
           child: ElevatedButton.icon(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Opening in maps...')),
-              );
-            },
+            onPressed: () => _openInMaps(lat, lng),
             icon: const Icon(Icons.map),
             label: const Text('Open in Maps'),
             style: ElevatedButton.styleFrom(
@@ -173,6 +170,37 @@ class _LocationSharingScreenState extends State<LocationSharingScreen> {
       return 'in ${diff.inMinutes}m';
     } else {
       return 'Expired';
+    }
+  }
+
+  Future<void> _openInMaps(double lat, double lng) async {
+    try {
+      // Try Google Maps first
+      final googleMapsUrl = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+      if (await canLaunchUrl(googleMapsUrl)) {
+        await launchUrl(googleMapsUrl, mode: LaunchMode.externalApplication);
+        return;
+      }
+      
+      // Fallback to generic maps URL
+      final mapsUrl = Uri.parse('geo:$lat,$lng');
+      if (await canLaunchUrl(mapsUrl)) {
+        await launchUrl(mapsUrl, mode: LaunchMode.externalApplication);
+        return;
+      }
+      
+      // If nothing works, show error
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No maps app available')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error opening maps: $e')),
+        );
+      }
     }
   }
 }

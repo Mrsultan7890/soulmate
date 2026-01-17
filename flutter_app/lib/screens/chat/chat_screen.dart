@@ -28,6 +28,16 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     _loadMessages();
+    _connectWebSocket();
+  }
+
+  void _connectWebSocket() {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final chatService = Provider.of<ChatService>(context, listen: false);
+    
+    if (authService.currentUser != null) {
+      chatService.connectWebSocket(authService.currentUser!.id);
+    }
   }
 
   Future<void> _loadMessages() async {
@@ -93,12 +103,17 @@ class _ChatScreenState extends State<ChatScreen> {
     _messageController.clear();
 
     if (authService.token != null) {
-      await chatService.sendMessage(
+      final success = await chatService.sendMessage(
         token: authService.token!,
         matchId: widget.match['id'],
         content: content,
       );
-      _scrollToBottom();
+      
+      if (success) {
+        // Refresh messages to show the new message immediately
+        await _loadMessages();
+        _scrollToBottom();
+      }
     }
   }
 
@@ -591,6 +606,8 @@ class _ChatScreenState extends State<ChatScreen> {
         );
         
         if (success) {
+          // Refresh messages to show the new location message
+          await _loadMessages();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Location shared successfully')),
           );
