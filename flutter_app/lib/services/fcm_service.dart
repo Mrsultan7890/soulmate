@@ -91,6 +91,12 @@ class FCMService {
 
   static Future<void> _handleForegroundMessage(RemoteMessage message) async {
     print('Foreground message: ${message.notification?.title}');
+    print('Message data: ${message.data}');
+    
+    // Handle welcome notification
+    if (message.data['type'] == 'welcome') {
+      print('🎉 Welcome notification received!');
+    }
     
     if (message.notification != null) {
       await _showLocalNotification(

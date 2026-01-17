@@ -167,6 +167,19 @@ async def login(user_login: UserLogin, db = Depends(get_db)):
     
     user_dict = dict(user)
     
+    # Send welcome notification
+    try:
+        from services.fcm_notification_service import FCMNotificationService
+        fcm_service = FCMNotificationService()
+        await fcm_service.send_notification(
+            user_id=user_dict["id"],
+            title="Welcome back! 👋",
+            body=f"Hi {user_dict['name']}, you're successfully logged in to HeartLink!",
+            data={"type": "welcome", "timestamp": str(datetime.utcnow())}
+        )
+    except Exception as e:
+        print(f"Welcome notification failed: {e}")
+    
     # Create access token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
