@@ -6,7 +6,7 @@ from typing import Optional
 class FCMNotificationService:
     def __init__(self):
         # Try V1 API first, fallback to Legacy
-        self.use_legacy = not os.path.exists('firebase-service-account.json')
+        self.use_legacy = not os.path.exists('heartlink-c3c2d-firebase-adminsdk-fbsvc-9739f1a00e.json')
         
         if self.use_legacy:
             # Legacy API
@@ -15,7 +15,7 @@ class FCMNotificationService:
             print("📱 Using FCM Legacy API")
         else:
             # V1 API
-            self.project_id = os.getenv('FIREBASE_PROJECT_ID', 'heartlink')
+            self.project_id = os.getenv('FIREBASE_PROJECT_ID', 'heartlink-c3c2d')
             self.fcm_url = f'https://fcm.googleapis.com/v1/projects/{self.project_id}/messages:send'
             print("📱 Using FCM V1 API")
     
@@ -86,7 +86,7 @@ class FCMNotificationService:
             from google.auth.transport.requests import Request
             
             credentials = service_account.Credentials.from_service_account_file(
-                'firebase-service-account.json',
+                'heartlink-c3c2d-firebase-adminsdk-fbsvc-9739f1a00e.json',
                 scopes=['https://www.googleapis.com/auth/firebase.messaging']
             )
             credentials.refresh(Request())

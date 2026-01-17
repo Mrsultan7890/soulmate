@@ -90,7 +90,7 @@ class User {
       motherTongue: json['mother_tongue'],
       gymFrequency: json['gym_frequency'],
       travelFrequency: json['travel_frequency'],
-      profilePrompts: json['profile_prompts'] != null 
+      profilePrompts: json['profile_prompts'] != null && json['profile_prompts'] is Map
           ? Map<String, String>.from(json['profile_prompts'])
           : null,
       interests: json['interests'] != null 
@@ -100,8 +100,10 @@ class User {
       profileImages: json['profile_images'] != null
           ? List<String>.from(json['profile_images'])
           : [],
-      preferences: json['preferences'] != null && json['preferences'] is Map 
-          ? Map<String, dynamic>.from(json['preferences']) 
+      preferences: json['preferences'] != null 
+          ? (json['preferences'] is String 
+              ? {} // If it's a string, return empty map
+              : Map<String, dynamic>.from(json['preferences']))
           : {},
       isVerified: json['is_verified'] == 1 || json['is_verified'] == true,
       isPremium: json['is_premium'] == 1 || json['is_premium'] == true,

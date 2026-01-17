@@ -21,10 +21,6 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
-class Token(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-
 class UserProfile(BaseModel):
     id: int
     name: str
@@ -47,6 +43,11 @@ class UserProfile(BaseModel):
     
     class Config:
         from_attributes = True
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: Optional[UserProfile] = None
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None

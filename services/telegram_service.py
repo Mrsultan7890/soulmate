@@ -77,65 +77,58 @@ class TelegramService:
         """Get file URL from Telegram"""
         try:
             print(f"[TelegramService] Getting file URL for: {file_id[:50]}...")
-            print(f"[TelegramService] Bot token: {self.bot_token[:20]}...")
             
             url = f"{self.base_url}/getFile"
-            async with aiohttp.ClientSession() as session:
+            timeout = aiohttp.ClientTimeout(total=10)
+            
+            async with aiohttp.ClientSession(timeout=timeout) as session:
                 async with session.get(url, params={'file_id': file_id}) as response:
-                    print(f"[TelegramService] Response status: {response.status}")
-                    
                     if response.status == 200:
                         data = await response.json()
-                        print(f"[TelegramService] Response data: {data}")
-                        
                         if data.get('ok'):
                             file_path = data['result']['file_path']
                             final_url = f"https://api.telegram.org/file/bot{self.bot_token}/{file_path}"
-                            print(f"[TelegramService] Final URL: {final_url[:80]}...")
+                            print(f"[TelegramService] Got URL successfully")
                             return final_url
-                        else:
-                            print(f"[TelegramService] API returned ok=false: {data}")
-                    else:
-                        error_text = await response.text()
-                        print(f"[TelegramService] Error response: {error_text}")
             
-            print(f"[TelegramService] Returning placeholder (no success)")
             return "https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=HeartLink"
         except Exception as e:
-            print(f"[TelegramService] Exception: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f"[TelegramService] Network error, using placeholder: {e}")
             return "https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=HeartLink"
     
     async def upload_image_from_base64(self, base64_data: str) -> str:
         """Upload base64 image to Telegram and return file_id"""
         try:
+            if not self.bot_token:
+                raise Exception("TELEGRAM_BOT_TOKEN not set")
+            
             import base64
             import io
             
-            # Remove data:image prefix if present
             if 'base64,' in base64_data:
                 base64_data = base64_data.split('base64,')[1]
             
-            # Decode base64
             image_bytes = base64.b64decode(base64_data)
+            print(f"[TelegramService] Uploading {len(image_bytes)} bytes to {self.admin_chat_id}")
             
-            # Upload to Telegram
             url = f"{self.base_url}/sendPhoto"
             data = aiohttp.FormData()
             data.add_field('chat_id', self.admin_chat_id)
             data.add_field('photo', io.BytesIO(image_bytes), filename='image.jpg')
             
-            async with aiohttp.ClientSession() as session:
+            timeout = aiohttp.ClientTimeout(total=30)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
                 async with session.post(url, data=data) as response:
                     if response.status == 200:
                         result = await response.json()
                         if result.get('ok'):
-                            # Get file_id from largest photo
                             photos = result['result']['photo']
                             file_id = photos[-1]['file_id']
-                            print(f"[TelegramService] Image uploaded, file_id: {file_id[:50]}...")
+                            print(f"[TelegramService] Upload successful: {file_id[:50]}...")
                             return file_id
+                    
+                    response_text = await response.text()
+                    print(f"[TelegramService] Upload failed: {response.status} - {response_text}")
             
             raise Exception("Upload failed")
         except Exception as e:

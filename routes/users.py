@@ -762,6 +762,42 @@ async def get_user_profile(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.put("/fcm-token")
+async def update_fcm_token(
+    request: dict,
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """Update user's FCM token for push notifications"""
+    try:
+        fcm_token = request.get('fcm_token')
+        
+        if not fcm_token:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="FCM token required"
+            )
+        
+        # Update database
+        await db.execute(
+            "UPDATE users SET fcm_token = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (fcm_token, current_user["id"])
+        )
+        await db.commit()
+        
+        return {
+            "message": "FCM token updated successfully",
+            "token_preview": fcm_token[:20] + "..."
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update FCM token: {str(e)}"
+        )
+
 @router.put("/rich-profile")
 async def update_rich_profile(
     profile_data: dict,

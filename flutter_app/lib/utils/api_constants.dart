@@ -21,6 +21,7 @@ class ApiConstants {
   static const String updateInterests = '/api/users/interests';
   static const String getInterests = '/api/users/interests';
   static const String updateRelationshipIntent = '/api/users/relationship-intent';
+  static const String updateFCMToken = '/api/users/fcm-token';
   
   // Match Endpoints
   static const String swipe = '/api/matches/swipe';

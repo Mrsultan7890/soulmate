@@ -236,12 +236,18 @@ async def init_db():
     
     # Add missing columns if they don't exist
     try:
-        await db.execute("ALTER TABLE users ADD COLUMN fcm_token TEXT")
-        await db.commit()
-        print("✅ Added fcm_token column")
+        # Check if fcm_token column exists
+        columns = await db.fetchall("PRAGMA table_info(users)")
+        column_names = [col[1] for col in columns]
+        
+        if 'fcm_token' not in column_names:
+            await db.execute("ALTER TABLE users ADD COLUMN fcm_token TEXT")
+            await db.commit()
+            print("✅ Added fcm_token column")
+        else:
+            print("✅ fcm_token column already exists")
     except Exception as e:
-        if "duplicate column name" not in str(e).lower():
-            print(f"⚠️ Error adding fcm_token column: {e}")
+        print(f"⚠️ Error checking/adding fcm_token column: {e}")
 
 async def get_db():
     """Dependency to get database connection"""
