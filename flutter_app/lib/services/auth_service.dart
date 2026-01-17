@@ -99,15 +99,24 @@ class AuthService extends ChangeNotifier {
         
         await _saveAuthData();
         
-        // Save FCM token to backend
+        // Initialize FCM and save token
         try {
+          await FCMService.initialize();
           final fcmToken = FCMService.fcmToken;
           if (fcmToken != null && _token != null) {
-            print('💾 Saving FCM token: ${fcmToken.substring(0, 20)}...');
+            print('💾 Saving FCM token after registration: ${fcmToken.substring(0, 20)}...');
             await FCMService.saveFCMToken(fcmToken, _token!);
-            print('✅ FCM token saved successfully');
+            print('✅ FCM token saved after registration');
           } else {
-            print('⚠️ FCM token or auth token is null');
+            print('⚠️ FCM token not ready yet, will retry...');
+            // Retry after a short delay
+            Future.delayed(const Duration(seconds: 2), () async {
+              final retryToken = FCMService.fcmToken;
+              if (retryToken != null && _token != null) {
+                await FCMService.saveFCMToken(retryToken, _token!);
+                print('✅ FCM token saved on retry');
+              }
+            });
           }
         } catch (e) {
           print('⚠️ FCM token save failed: $e');
@@ -175,15 +184,24 @@ class AuthService extends ChangeNotifier {
         
         await _saveAuthData();
         
-        // Save FCM token to backend
+        // Initialize FCM and save token
         try {
+          await FCMService.initialize();
           final fcmToken = FCMService.fcmToken;
           if (fcmToken != null && _token != null) {
-            print('💾 Saving FCM token: ${fcmToken.substring(0, 20)}...');
+            print('💾 Saving FCM token after login: ${fcmToken.substring(0, 20)}...');
             await FCMService.saveFCMToken(fcmToken, _token!);
             print('✅ FCM token saved after login');
           } else {
-            print('⚠️ FCM token or auth token is null');
+            print('⚠️ FCM token not ready yet, will retry...');
+            // Retry after a short delay
+            Future.delayed(const Duration(seconds: 2), () async {
+              final retryToken = FCMService.fcmToken;
+              if (retryToken != null && _token != null) {
+                await FCMService.saveFCMToken(retryToken, _token!);
+                print('✅ FCM token saved on retry');
+              }
+            });
           }
         } catch (e) {
           print('⚠️ FCM token save failed: $e');
