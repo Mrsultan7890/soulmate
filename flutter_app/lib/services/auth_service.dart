@@ -103,10 +103,14 @@ class AuthService extends ChangeNotifier {
         try {
           final fcmToken = await FCMService.initialize();
           if (fcmToken != null && _token != null) {
+            print('💾 Saving FCM token: ${fcmToken.substring(0, 20)}...');
             await FCMService.saveFCMToken(fcmToken, _token!);
+            print('✅ FCM token saved successfully');
+          } else {
+            print('⚠️ FCM token or auth token is null');
           }
         } catch (e) {
-          print('FCM token save failed: $e');
+          print('⚠️ FCM token save failed: $e');
         }
         
         _isLoading = false;
@@ -175,8 +179,11 @@ class AuthService extends ChangeNotifier {
         try {
           final fcmToken = await FCMService.initialize();
           if (fcmToken != null && _token != null) {
+            print('💾 Saving FCM token: ${fcmToken.substring(0, 20)}...');
             await FCMService.saveFCMToken(fcmToken, _token!);
             print('✅ FCM token saved after login');
+          } else {
+            print('⚠️ FCM token or auth token is null');
           }
         } catch (e) {
           print('⚠️ FCM token save failed: $e');

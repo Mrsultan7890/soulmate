@@ -93,6 +93,7 @@ async def init_db():
             last_active DATETIME DEFAULT CURRENT_TIMESTAMP,
             response_time_avg INTEGER DEFAULT 0, -- in minutes
             activity_level TEXT DEFAULT 'Medium', -- 'Low', 'Medium', 'High'
+            fcm_token TEXT, -- Firebase Cloud Messaging token
             
             interests TEXT, -- JSON array of interests
             relationship_intent TEXT, -- "serious", "casual", "friends"
@@ -232,6 +233,15 @@ async def init_db():
     
     await db.commit()
     print("✅ Database tables initialized")
+    
+    # Add missing columns if they don't exist
+    try:
+        await db.execute("ALTER TABLE users ADD COLUMN fcm_token TEXT")
+        await db.commit()
+        print("✅ Added fcm_token column")
+    except Exception as e:
+        if "duplicate column name" not in str(e).lower():
+            print(f"⚠️ Error adding fcm_token column: {e}")
 
 async def get_db():
     """Dependency to get database connection"""

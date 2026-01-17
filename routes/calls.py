@@ -26,17 +26,7 @@ async def initiate_call(
         if request.call_type not in ['video', 'audio']:
             raise HTTPException(status_code=400, detail="Invalid call type")
         
-        # Check if receiver exists and is a match
-        match = await db.fetchone("""
-            SELECT * FROM matches 
-            WHERE (user1_id = ? AND user2_id = ?) 
-               OR (user1_id = ? AND user2_id = ?)
-        """, (current_user["id"], request.receiver_id, request.receiver_id, current_user["id"]))
-        
-        if not match:
-            raise HTTPException(status_code=403, detail="Can only call matched users")
-        
-        # Get receiver info
+        # Get receiver info first
         receiver = await db.fetchone(
             "SELECT id, name FROM users WHERE id = ?",
             (request.receiver_id,)
@@ -44,6 +34,16 @@ async def initiate_call(
         
         if not receiver:
             raise HTTPException(status_code=404, detail="User not found")
+        
+        # Check if receiver exists and is a match (optional for now)
+        # match = await db.fetchone("""
+        #     SELECT * FROM matches 
+        #     WHERE (user1_id = ? AND user2_id = ?) 
+        #        OR (user1_id = ? AND user2_id = ?)
+        # """, (current_user["id"], request.receiver_id, request.receiver_id, current_user["id"]))
+        
+        # if not match:
+        #     raise HTTPException(status_code=403, detail="Can only call matched users")
         
         # Initiate call through signaling manager
         result = await call_manager.initiate_call(

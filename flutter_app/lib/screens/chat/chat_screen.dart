@@ -287,7 +287,21 @@ class _ChatScreenState extends State<ChatScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    timeago.format(DateTime.parse(message['created_at'] ?? DateTime.now().toIso8601String())),
+                    () {
+                      try {
+                        if (message['created_at'] != null) {
+                          final timestamp = DateTime.parse(message['created_at']);
+                          print('Message timestamp: ${message['created_at']}, Parsed: $timestamp');
+                          return timeago.format(timestamp);
+                        } else {
+                          print('Message created_at is null');
+                          return 'Just now';
+                        }
+                      } catch (e) {
+                        print('Error parsing timestamp: $e, Raw: ${message['created_at']}');
+                        return 'Just now';
+                      }
+                    }(),
                     style: TextStyle(
                       color: isMe ? Colors.white.withOpacity(0.7) : AppTheme.textSecondary,
                       fontSize: 10,
