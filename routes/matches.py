@@ -17,21 +17,37 @@ async def swipe_user(
 ):
     """Swipe on a user (like or pass)"""
     try:
-        # Check if already swiped
+        print(f"\n=== SWIPE REQUEST ===")
+        print(f"Swiper: {current_user['id']}")
+        print(f"Swiped: {swipe.swiped_user_id}")
+        print(f"Is Like: {swipe.is_like}")
+        
+        # Check if already swiped (including undone)
         existing = await db.fetchone(
             "SELECT * FROM swipes WHERE swiper_id = ? AND swiped_id = ?",
             (current_user["id"], swipe.swiped_user_id)
         )
         
         if existing:
-            return SwipeResponse(is_match=False, match_id=None)
-        
-        # Store swipe
-        await db.execute(
-            "INSERT INTO swipes (swiper_id, swiped_id, is_like) VALUES (?, ?, ?)",
-            (current_user["id"], swipe.swiped_user_id, swipe.is_like)
-        )
-        await db.commit()
+            print(f"Already swiped: {dict(existing)}")
+            # If undone, update the existing swipe
+            if existing['is_undone'] == 1:
+                await db.execute(
+                    "UPDATE swipes SET is_like = ?, is_undone = 0, created_at = CURRENT_TIMESTAMP WHERE id = ?",
+                    (swipe.is_like, existing['id'])
+                )
+                await db.commit()
+                print(f"Updated existing undone swipe")
+            else:
+                return SwipeResponse(is_match=False, match_id=None)
+        else:
+            # Store new swipe
+            await db.execute(
+                "INSERT INTO swipes (swiper_id, swiped_id, is_like) VALUES (?, ?, ?)",
+                (current_user["id"], swipe.swiped_user_id, swipe.is_like)
+            )
+            await db.commit()
+            print(f"New swipe saved successfully")
         
         # Check for mutual like (match)
         is_match = False
@@ -39,7 +55,7 @@ async def swipe_user(
         
         if swipe.is_like:
             mutual_like = await db.fetchone(
-                "SELECT * FROM swipes WHERE swiper_id = ? AND swiped_id = ? AND is_like = 1",
+                "SELECT * FROM swipes WHERE swiper_id = ? AND swiped_id = ? AND is_like = 1 AND (is_undone = 0 OR is_undone IS NULL)",
                 (swipe.swiped_user_id, current_user["id"])
             )
             
@@ -82,6 +98,8 @@ async def swipe_user(
                     match_id = existing_match['id']
                     is_match = True
         
+        print(f"Final result - Match: {is_match}, Match ID: {match_id}")
+        print(f"=== END SWIPE ===")
         return SwipeResponse(is_match=is_match, match_id=match_id)
         
     except Exception as e:
@@ -210,13 +228,26 @@ async def undo_last_swipe(
 ):
     """Undo the last swipe"""
     try:
-        # Get last swipe (not undone)
+        print(f"\n=== UNDO SWIPE REQUEST ===")
+        print(f"User ID: {current_user['id']}")
+        
+        # Get last swipe (not undone) - fix column names
         last_swipe = await db.fetchone(
-            "SELECT * FROM swipes WHERE swiper_id = ? AND is_undone = 0 ORDER BY created_at DESC LIMIT 1",
+            "SELECT * FROM swipes WHERE swiper_id = ? AND (is_undone = 0 OR is_undone IS NULL) ORDER BY created_at DESC LIMIT 1",
             (current_user["id"],)
         )
         
+        # Also check all swipes for debugging
+        all_swipes = await db.fetchall(
+            "SELECT * FROM swipes WHERE swiper_id = ? ORDER BY created_at DESC LIMIT 3",
+            (current_user["id"],)
+        )
+        print(f"All recent swipes: {[dict(s) for s in all_swipes]}")
+        
+        print(f"Last swipe found: {dict(last_swipe) if last_swipe else 'None'}")
+        
         if not last_swipe:
+            print("No swipe to undo")
             raise HTTPException(status_code=404, detail="No swipe to undo")
         
         # Mark as undone
@@ -225,6 +256,9 @@ async def undo_last_swipe(
             (last_swipe["id"],)
         )
         await db.commit()
+        
+        print(f"Swipe {last_swipe['id']} marked as undone")
+        print(f"=== END UNDO SWIPE ===")
         
         return {
             "success": True,
@@ -235,6 +269,7 @@ async def undo_last_swipe(
     except HTTPException:
         raise
     except Exception as e:
+        print(f"Undo swipe error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/who-liked-me")

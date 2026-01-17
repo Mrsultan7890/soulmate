@@ -72,7 +72,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             if (matchService.matches.isNotEmpty && mounted) {
               showDialog(
                 context: context,
-                builder: (context) => MatchDialog(match: matchService.matches.first),
+                builder: (context) => MatchDialog(
+                  match: matchService.matches.first,
+                  currentUserId: authService.currentUser!.id,
+                ),
               );
             }
           });
