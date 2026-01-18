@@ -18,6 +18,10 @@ class UpdateSettings(BaseModel):
     notifications_enabled: Optional[bool] = None
     location_sharing: Optional[bool] = None
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
 @router.get("/", response_model=UserSettings)
 async def get_user_settings(
     current_user: dict = Depends(get_current_user),
@@ -133,4 +137,91 @@ async def toggle_feed_visibility(
     return {
         "show_in_feed": new_value,
         "message": f"Feed visibility {'enabled' if new_value else 'disabled'}"
+    }
+
+@router.post("/change-password")
+async def change_password(
+    request: ChangePasswordRequest,
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """Change user password"""
+    from routes.auth import verify_password, get_password_hash
+    
+    # Verify current password
+    user = await db.fetchone("""
+        SELECT password_hash FROM users WHERE id = ?
+    """, (current_user["id"],))
+    
+    if not verify_password(request.current_password, user["password_hash"]):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    
+    # Validate new password
+    if len(request.new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+    
+    # Update password
+    new_hash = get_password_hash(request.new_password)
+    await db.execute("""
+        UPDATE users SET password_hash = ? WHERE id = ?
+    """, (new_hash, current_user["id"]))
+    await db.commit()
+    
+    return {"message": "Password changed successfully"}
+
+@router.delete("/delete-account")
+async def delete_account(
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """Delete user account permanently"""
+    try:
+        # Delete user data in order (foreign key constraints)
+        await db.execute("DELETE FROM feed_likes WHERE user_id = ?", (current_user["id"],))
+        await db.execute("DELETE FROM feed_favorites WHERE user_id = ?", (current_user["id"],))
+        await db.execute("DELETE FROM feed_posts WHERE user_id = ?", (current_user["id"],))
+        await db.execute("DELETE FROM user_settings WHERE user_id = ?", (current_user["id"],))
+        await db.execute("DELETE FROM messages WHERE sender_id = ?", (current_user["id"],))
+        await db.execute("DELETE FROM matches WHERE user1_id = ? OR user2_id = ?", (current_user["id"], current_user["id"]))
+        await db.execute("DELETE FROM swipes WHERE swiper_id = ? OR swiped_id = ?", (current_user["id"], current_user["id"]))
+        await db.execute("DELETE FROM profile_views WHERE viewer_id = ? OR viewed_id = ?", (current_user["id"], current_user["id"]))
+        await db.execute("DELETE FROM users WHERE id = ?", (current_user["id"],))
+        await db.commit()
+        
+        return {"message": "Account deleted successfully"}
+    except Exception as e:
+        print(f"Error deleting account: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete account")
+
+@router.get("/account-info")
+async def get_account_info(
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """Get account information"""
+    user = await db.fetchone("""
+        SELECT email, name, created_at, is_verified, is_premium, flag_count
+        FROM users WHERE id = ?
+    """, (current_user["id"],))
+    
+    # Get stats
+    matches_count = await db.fetchone("""
+        SELECT COUNT(*) as count FROM matches 
+        WHERE user1_id = ? OR user2_id = ?
+    """, (current_user["id"], current_user["id"]))
+    
+    profile_views = await db.fetchone("""
+        SELECT COUNT(*) as count FROM profile_views 
+        WHERE viewed_id = ?
+    """, (current_user["id"],))
+    
+    return {
+        "email": user["email"],
+        "name": user["name"],
+        "member_since": user["created_at"],
+        "is_verified": bool(user["is_verified"]),
+        "is_premium": bool(user["is_premium"]),
+        "flag_count": user["flag_count"],
+        "total_matches": matches_count["count"],
+        "profile_views": profile_views["count"]
     }

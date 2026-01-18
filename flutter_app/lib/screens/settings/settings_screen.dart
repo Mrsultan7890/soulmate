@@ -5,6 +5,14 @@ import 'dart:convert';
 import '../../services/auth_service.dart';
 import '../../utils/api_constants.dart';
 import '../../utils/theme.dart';
+import 'notification_settings_screen.dart';
+import 'privacy_policy_screen.dart';
+import 'help_support_screen.dart';
+import 'safety_center_screen.dart';
+import 'blocked_users_screen.dart';
+import 'change_password_screen.dart';
+import 'about_screen.dart';
+import 'advanced_filter_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -135,8 +143,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                 ),
                 
-                const SizedBox(height: 16),
-                
                 // Refresh Feed Posts Button
                 Container(
                   width: double.infinity,
@@ -157,16 +163,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 
                 const SizedBox(height: 24),
                 
-                // Privacy Settings Section
-                _buildSectionHeader('Privacy Settings'),
-                _buildSettingTile(
+                // Account Settings
+                _buildSectionHeader('Account'),
+                _buildNavigationTile(
+                  icon: Icons.edit,
+                  title: 'Edit Profile',
+                  subtitle: 'Update your profile information',
+                  onTap: () => Navigator.pop(context),
+                ),
+                _buildNavigationTile(
+                  icon: Icons.notifications,
                   title: 'Notifications',
-                  subtitle: 'Receive push notifications',
-                  value: _notificationsEnabled,
-                  onChanged: (value) {
-                    setState(() => _notificationsEnabled = value);
-                    _updateSetting('notifications_enabled', value);
-                  },
+                  subtitle: 'Manage notification preferences',
+                  onTap: () => Navigator.push(context, MaterialPageRoute(
+                    builder: (context) => const NotificationSettingsScreen(),
+                  )),
+                ),
+                _buildNavigationTile(
+                  icon: Icons.lock,
+                  title: 'Change Password',
+                  subtitle: 'Update your account password',
+                  onTap: () => Navigator.push(context, MaterialPageRoute(
+                    builder: (context) => const ChangePasswordScreen(),
+                  )),
+                ),
+                _buildNavigationTile(
+                  icon: Icons.info_outline,
+                  title: 'Account Info',
+                  subtitle: 'View account details and stats',
+                  onTap: () => _showAccountInfo(),
+                ),
+                
+                const SizedBox(height: 24),
+                
+                // Discovery Settings
+                _buildSectionHeader('Discovery'),
+                _buildNavigationTile(
+                  icon: Icons.filter_list,
+                  title: 'Discovery Preferences',
+                  subtitle: 'Age range, distance, and more',
+                  onTap: () => Navigator.push(context, MaterialPageRoute(
+                    builder: (context) => const AdvancedFilterScreen(),
+                  )),
                 ),
                 _buildSettingTile(
                   title: 'Location Sharing',
@@ -176,6 +214,112 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     setState(() => _locationSharing = value);
                     _updateSetting('location_sharing', value);
                   },
+                ),
+                _buildNavigationTile(
+                  icon: Icons.security,
+                  title: 'Safety Center',
+                  subtitle: 'Safety tips and reporting',
+                  onTap: () => Navigator.push(context, MaterialPageRoute(
+                    builder: (context) => const SafetyCenterScreen(),
+                  )),
+                ),
+                _buildNavigationTile(
+                  icon: Icons.block,
+                  title: 'Blocked Users',
+                  subtitle: 'Manage blocked accounts',
+                  onTap: () => Navigator.push(context, MaterialPageRoute(
+                    builder: (context) => const BlockedUsersScreen(),
+                  )),
+                ),
+                
+                const SizedBox(height: 24),
+                
+                // Support & Legal
+                _buildSectionHeader('Support & Legal'),
+                _buildNavigationTile(
+                  icon: Icons.help,
+                  title: 'Help & Support',
+                  subtitle: 'FAQ and contact support',
+                  onTap: () => Navigator.push(context, MaterialPageRoute(
+                    builder: (context) => const HelpSupportScreen(),
+                  )),
+                ),
+                _buildNavigationTile(
+                  icon: Icons.privacy_tip,
+                  title: 'Privacy Policy',
+                  subtitle: 'How we handle your data',
+                  onTap: () => Navigator.push(context, MaterialPageRoute(
+                    builder: (context) => const PrivacyPolicyScreen(),
+                  )),
+                ),
+                _buildNavigationTile(
+                  icon: Icons.info,
+                  title: 'About',
+                  subtitle: 'App version and information',
+                  onTap: () => Navigator.push(context, MaterialPageRoute(
+                    builder: (context) => const AboutScreen(),
+                  )),
+                ),
+                
+                const SizedBox(height: 24),
+                
+                // Logout Button
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Logout'),
+                          content: const Text('Are you sure you want to logout?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                Provider.of<AuthService>(context, listen: false).logout();
+                                Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                              },
+                              child: const Text('Logout', style: TextStyle(color: Colors.red)),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.logout),
+                    label: const Text('Logout'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // Delete Account Button
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  child: ElevatedButton.icon(
+                    onPressed: () => _showDeleteAccountDialog(),
+                    icon: const Icon(Icons.delete_forever),
+                    label: const Text('Delete Account'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red[700],
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
                 ),
                 
                 const SizedBox(height: 24),
@@ -217,6 +361,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ],
             ),
+    );
+  }
+
+  Widget _buildNavigationTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: ListTile(
+        leading: Icon(icon, color: AppTheme.primaryColor),
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontWeight: FontWeight.w500,
+            fontSize: 16,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(
+            color: Colors.grey[600],
+            fontSize: 14,
+          ),
+        ),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        onTap: onTap,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      ),
     );
   }
 
@@ -270,3 +450,73 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 }
+  Future<void> _showAccountInfo() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConstants.baseUrl}/api/settings/account-info'),
+        headers: {'Authorization': 'Bearer ${authService.token}'},
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Account Information'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Email: ${data['email']}'),
+                Text('Name: ${data['name']}'),
+                Text('Verified: ${data['is_verified'] ? 'Yes' : 'No'}'),
+                Text('Total matches: ${data['total_matches']}'),
+                Text('Profile views: ${data['profile_views']}'),
+              ],
+            ),
+            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))],
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error: $e');
+    }
+  }
+
+  Future<void> _showDeleteAccountDialog() async {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Account'),
+        content: const Text('This will permanently delete your account and all data.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _deleteAccount();
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteAccount() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    try {
+      final response = await http.delete(
+        Uri.parse('${ApiConstants.baseUrl}/api/settings/delete-account'),
+        headers: {'Authorization': 'Bearer ${authService.token}'},
+      );
+      if (response.statusCode == 200) {
+        authService.logout();
+        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to delete account'), backgroundColor: Colors.red),
+      );
+    }
+  }
