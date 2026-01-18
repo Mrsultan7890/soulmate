@@ -60,12 +60,6 @@ class _GameZoneScreenState extends State<GameZoneScreen>
   void initState() {
     super.initState();
     
-    // Lock to landscape
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-    
     _bottleController = AnimationController(
       duration: const Duration(seconds: 3),
       vsync: this,
@@ -85,6 +79,14 @@ class _GameZoneScreenState extends State<GameZoneScreen>
     _loadZoneData();
     _connectWebSocket();
     _initVoiceChat();
+    
+    // Set landscape after widget is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    });
   }
 
   Future<void> _loadZoneData() async {
@@ -270,34 +272,40 @@ class _GameZoneScreenState extends State<GameZoneScreen>
     }
 
     return Scaffold(
-      body: Stack(
-        children: [
-          // Main game area
-          Row(
-            children: [
-              // Left side - Members
-              Container(
-                width: 120,
-                color: Colors.grey[100],
-                child: _buildMembersSection(),
-              ),
-              // Center - Game area
-              Expanded(
-                child: _buildGameArea(),
-              ),
-              // Right side - Voice controls
-              Container(
-                width: 80,
-                color: Colors.grey[50],
-                child: _buildVoiceControls(),
-              ),
-            ],
-          ),
-          // Collapsible chat
-          _buildCollapsibleChat(),
-          // Top bar
-          _buildTopBar(),
-        ],
+      body: SafeArea(
+        child: OrientationBuilder(
+          builder: (context, orientation) {
+            return Stack(
+              children: [
+                // Main game area
+                Row(
+                  children: [
+                    // Left side - Members
+                    Container(
+                      width: 120,
+                      color: Colors.grey[100],
+                      child: _buildMembersSection(),
+                    ),
+                    // Center - Game area
+                    Expanded(
+                      child: _buildGameArea(),
+                    ),
+                    // Right side - Voice controls
+                    Container(
+                      width: 80,
+                      color: Colors.grey[50],
+                      child: _buildVoiceControls(),
+                    ),
+                  ],
+                ),
+                // Collapsible chat
+                _buildCollapsibleChat(),
+                // Top bar
+                _buildTopBar(),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -574,23 +582,43 @@ class _GameZoneScreenState extends State<GameZoneScreen>
   // Voice Chat Methods
   Future<void> _initVoiceChat() async {
     try {
+      // Check if WebRTC is available
+      if (!mounted) return;
+      
       _localStream = await navigator.mediaDevices.getUserMedia({
         'audio': true,
         'video': false,
+      }).catchError((error) {
+        print('Microphone permission denied: $error');
+        return null;
       });
+      
+      if (_localStream == null) {
+        setState(() => _voiceConnected = false);
+        return;
+      }
       
       _peerConnection = await createPeerConnection({
         'iceServers': [
           {'urls': 'stun:stun.l.google.com:19302'},
           {'urls': 'stun:stun1.l.google.com:19302'},
         ]
+      }).catchError((error) {
+        print('WebRTC connection failed: $error');
+        return null;
       });
       
-      _peerConnection!.addStream(_localStream!);
-      
-      setState(() => _voiceConnected = true);
+      if (_peerConnection != null && _localStream != null) {
+        _peerConnection!.addStream(_localStream!);
+        if (mounted) {
+          setState(() => _voiceConnected = true);
+        }
+      }
     } catch (e) {
       print('Voice chat init error: $e');
+      if (mounted) {
+        setState(() => _voiceConnected = false);
+      }
     }
   }
   

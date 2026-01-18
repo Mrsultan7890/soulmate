@@ -179,6 +179,8 @@ class GameService:
             'question_type': question_type,
             'answer_angle': answer_angle
         }
+    
+    async def add_connection(self, zone_id: int, websocket):
         """Add WebSocket connection"""
         if zone_id not in self.active_connections:
             self.active_connections[zone_id] = []
