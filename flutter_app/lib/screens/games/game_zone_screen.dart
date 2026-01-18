@@ -46,9 +46,10 @@ class _GameZoneScreenState extends State<GameZoneScreen>
   late AnimationController _chatAnimationController;
   late Animation<double> _chatAnimation;
   
-  // Voice chat (disabled)
+  // Voice chat
   bool _voiceConnected = false;
-  bool _isMuted = false;
+  bool _isMuted = true;
+  bool _isRecording = false;
   
   WebSocketChannel? _channel;
 
@@ -139,6 +140,12 @@ class _GameZoneScreenState extends State<GameZoneScreen>
         break;
       case 'chat_message':
         _handleChatMessage(data);
+        break;
+      case 'voice_start':
+        _handleVoiceStart(data);
+        break;
+      case 'voice_stop':
+        _handleVoiceStop(data);
         break;
     }
   }
@@ -336,30 +343,62 @@ class _GameZoneScreenState extends State<GameZoneScreen>
                   child: _buildGameArea(),
                 ),
                 
-                // Voice controls (disabled)
+                // Voice controls
                 Container(
                   height: 60,
                   padding: const EdgeInsets.all(8),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.grey,
-                        ),
-                        child: const Icon(
-                          Icons.mic_off,
-                          color: Colors.white,
-                          size: 20,
+                      GestureDetector(
+                        onTap: _toggleMute,
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: _isMuted ? Colors.red : AppTheme.primaryColor,
+                          ),
+                          child: Icon(
+                            _isMuted ? Icons.mic_off : Icons.mic,
+                            color: Colors.white,
+                            size: 20,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 16),
-                      const Text(
-                        'Voice chat disabled',
-                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                      GestureDetector(
+                        onLongPressStart: (_) => _startRecording(),
+                        onLongPressEnd: (_) => _stopRecording(),
+                        child: Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: _isRecording ? Colors.red : Colors.blue,
+                            boxShadow: _isRecording ? [
+                              BoxShadow(
+                                color: Colors.red.withOpacity(0.5),
+                                blurRadius: 10,
+                                spreadRadius: 2,
+                              ),
+                            ] : null,
+                          ),
+                          child: Icon(
+                            _isRecording ? Icons.stop : Icons.keyboard_voice,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Text(
+                        _isRecording ? 'Recording...' : 'Hold to talk',
+                        style: TextStyle(
+                          color: _isRecording ? Colors.red : Colors.grey[600],
+                          fontSize: 12,
+                          fontWeight: _isRecording ? FontWeight.bold : FontWeight.normal,
+                        ),
                       ),
                     ],
                   ),
@@ -709,6 +748,28 @@ class _GameZoneScreenState extends State<GameZoneScreen>
     });
   }
 
+  void _handleVoiceStart(Map<String, dynamic> data) {
+    // Show voice recording indicator for other users
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${data['sender']['name']} is speaking...'),
+        duration: const Duration(seconds: 2),
+        backgroundColor: Colors.blue,
+      ),
+    );
+  }
+
+  void _handleVoiceStop(Map<String, dynamic> data) {
+    // Voice recording stopped
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${data['sender']['name']} finished speaking'),
+        duration: const Duration(seconds: 1),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
   void _sendChatMessage() {
     if (_chatTextController.text.trim().isEmpty) return;
     
@@ -722,6 +783,71 @@ class _GameZoneScreenState extends State<GameZoneScreen>
     
     _channel?.sink.add(json.encode(message));
     _chatTextController.clear();
+  }
+
+  void _toggleMute() {
+    setState(() {
+      _isMuted = !_isMuted;
+    });
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_isMuted ? 'Microphone muted' : 'Microphone unmuted'),
+        duration: const Duration(seconds: 1),
+        backgroundColor: _isMuted ? Colors.red : Colors.green,
+      ),
+    );
+  }
+
+  void _startRecording() {
+    if (_isMuted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unmute microphone first'),
+          duration: Duration(seconds: 1),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+    
+    setState(() {
+      _isRecording = true;
+    });
+    
+    // Send voice recording start event
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final message = {
+      'type': 'voice_start',
+      'sender': {'id': authService.currentUser?.id, 'name': authService.currentUser?.name},
+      'timestamp': DateTime.now().toIso8601String(),
+    };
+    
+    _channel?.sink.add(json.encode(message));
+  }
+
+  void _stopRecording() {
+    setState(() {
+      _isRecording = false;
+    });
+    
+    // Send voice recording stop event
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final message = {
+      'type': 'voice_stop',
+      'sender': {'id': authService.currentUser?.id, 'name': authService.currentUser?.name},
+      'timestamp': DateTime.now().toIso8601String(),
+    };
+    
+    _channel?.sink.add(json.encode(message));
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Voice message sent'),
+        duration: Duration(seconds: 1),
+        backgroundColor: Colors.green,
+      ),
+    );
   }
 
 

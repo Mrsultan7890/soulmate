@@ -1,7 +1,9 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 import uvicorn
+import os
 
 from routes import auth, users, matches, chat, safety, enhanced_chat, safety_tips, fcm, gender_verification, calls, profile_features, games, feed
 from routes import settings as user_settings
@@ -11,7 +13,7 @@ from config.settings import settings
 # Initialize FastAPI app
 app = FastAPI(
     title="HeartLink API",
-    description="Dating App Backend with Turso DB & Telegram Integration",
+    description="Dating App Backend with Turbo DB & Telegram Integration",
     version="1.0.0"
 )
 
@@ -27,6 +29,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount static files for website
+app.mount("/static", StaticFiles(directory="website"), name="static")
 
 # Include routers
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
@@ -55,8 +60,27 @@ async def startup_event():
     await init_db()
     print("🚀 HeartLink API Started!")
 
+# Website routes
 @app.get("/")
-async def root():
+async def serve_website():
+    """Serve the main website"""
+    return FileResponse('website/index.html')
+
+@app.get("/download")
+async def download_apk():
+    """Serve APK download"""
+    apk_path = "website/assets/heartlink-v1.0.0.apk"
+    if os.path.exists(apk_path):
+        return FileResponse(
+            apk_path, 
+            media_type='application/vnd.android.package-archive',
+            filename="HeartLink-v1.0.0.apk"
+        )
+    else:
+        raise HTTPException(status_code=404, detail="APK file not found")
+
+@app.get("/api")
+async def api_root():
     return {
         "message": "💕 HeartLink API",
         "version": "1.0.0",

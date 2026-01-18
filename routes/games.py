@@ -309,6 +309,20 @@ async def websocket_endpoint(websocket: WebSocket, zone_id: int):
                     "answer": message.get("answer"),
                     "answerer": message.get("answerer")
                 })
+            elif message.get("type") == "voice_start":
+                # Broadcast voice recording start
+                await game_service.broadcast_to_zone(zone_id, {
+                    "type": "voice_start",
+                    "sender": message.get("sender"),
+                    "timestamp": message.get("timestamp")
+                })
+            elif message.get("type") == "voice_stop":
+                # Broadcast voice recording stop
+                await game_service.broadcast_to_zone(zone_id, {
+                    "type": "voice_stop",
+                    "sender": message.get("sender"),
+                    "timestamp": message.get("timestamp")
+                })
             
     except WebSocketDisconnect:
         await game_service.remove_connection(zone_id, websocket)
