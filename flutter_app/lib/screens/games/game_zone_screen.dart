@@ -79,16 +79,7 @@ class _GameZoneScreenState extends State<GameZoneScreen>
     
     _loadZoneData();
     _connectWebSocket();
-    
-    // Set landscape after widget is built
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]);
-      // Initialize voice chat after orientation is set
-      _initVoiceChat();
-    });
+    _initVoiceChat();
   }
 
   Future<void> _loadZoneData() async {
@@ -274,99 +265,124 @@ class _GameZoneScreenState extends State<GameZoneScreen>
     }
 
     return Scaffold(
-      body: SafeArea(
-        child: OrientationBuilder(
-          builder: (context, orientation) {
-            return Stack(
-              children: [
-                // Main game area
-                Row(
-                  children: [
-                    // Left side - Members
-                    Container(
-                      width: 120,
-                      color: Colors.grey[100],
-                      child: _buildMembersSection(),
-                    ),
-                    // Center - Game area
-                    Expanded(
-                      child: _buildGameArea(),
-                    ),
-                    // Right side - Voice controls
-                    Container(
-                      width: 80,
-                      color: Colors.grey[50],
-                      child: _buildVoiceControls(),
-                    ),
-                  ],
-                ),
-                // Collapsible chat
-                _buildCollapsibleChat(),
-                // Top bar
-                _buildTopBar(),
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMembersSection() {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          child: Text(
-            'Players\n${_members.length}/6',
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-            textAlign: TextAlign.center,
+      appBar: AppBar(
+        title: Text(_zoneData?['zone_name'] ?? 'Game Zone'),
+        backgroundColor: Colors.white,
+        elevation: 1,
+        actions: [
+          IconButton(
+            onPressed: () {
+              setState(() {
+                _chatExpanded = !_chatExpanded;
+                if (_chatExpanded) {
+                  _chatAnimationController.forward();
+                } else {
+                  _chatAnimationController.reverse();
+                }
+              });
+            },
+            icon: Icon(_chatExpanded ? Icons.chat : Icons.chat_bubble_outline),
+            tooltip: 'Toggle Chat',
           ),
-        ),
-        Expanded(
-          child: ListView.builder(
-            itemCount: _members.length,
-            itemBuilder: (context, index) {
-              final member = _members[index];
-              return Container(
-                margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                child: Column(
-                  children: [
-                    CircleAvatar(
-                      radius: 25,
-                      backgroundColor: member['role'] == 'admin' 
-                          ? AppTheme.primaryColor 
-                          : Colors.blue,
-                      child: Text(
-                        member['name'][0].toUpperCase(),
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
+        ],
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Members section
+            Container(
+              height: 80,
+              padding: const EdgeInsets.all(8),
+              child: Row(
+                children: [
+                  Text('Players: ${_members.length}/6', 
+                       style: const TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _members.length,
+                      itemBuilder: (context, index) {
+                        final member = _members[index];
+                        return Container(
+                          margin: const EdgeInsets.only(right: 8),
+                          child: Column(
+                            children: [
+                              CircleAvatar(
+                                radius: 20,
+                                backgroundColor: member['role'] == 'admin' 
+                                    ? AppTheme.primaryColor 
+                                    : Colors.blue,
+                                child: Text(
+                                  member['name'][0].toUpperCase(),
+                                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                member['name'],
+                                style: const TextStyle(fontSize: 10),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      member['name'],
-                      style: const TextStyle(fontSize: 10),
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            
+            // Game area
+            Expanded(
+              child: _buildGameArea(),
+            ),
+            
+            // Voice controls
+            Container(
+              height: 60,
+              padding: const EdgeInsets.all(8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _voiceConnected ? Colors.green : Colors.grey,
                     ),
-                    // Voice indicator
-                    Container(
-                      width: 8,
-                      height: 8,
-                      margin: const EdgeInsets.only(top: 2),
+                    child: Icon(
+                      _voiceConnected ? Icons.mic : Icons.mic_off,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  GestureDetector(
+                    onTap: _toggleMute,
+                    child: Container(
+                      width: 40,
+                      height: 40,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: _voiceConnected ? Colors.green : Colors.grey,
+                        color: _isMuted ? Colors.red : AppTheme.primaryColor,
+                      ),
+                      child: Icon(
+                        _isMuted ? Icons.mic_off : Icons.mic,
+                        color: Colors.white,
+                        size: 20,
                       ),
                     ),
-                  ],
-                ),
-              );
-            },
-          ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -660,221 +676,6 @@ class _GameZoneScreenState extends State<GameZoneScreen>
     }
   }
   
-  Widget _buildVoiceControls() {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // Voice status
-        Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: _voiceConnected ? Colors.green : Colors.grey,
-          ),
-          child: Icon(
-            _voiceConnected ? Icons.mic : Icons.mic_off,
-            color: Colors.white,
-            size: 24,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          _voiceConnected ? 'Connected' : 'Connecting...',
-          style: const TextStyle(fontSize: 10),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 20),
-        
-        // Mute button
-        GestureDetector(
-          onTap: _toggleMute,
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _isMuted ? Colors.red : AppTheme.primaryColor,
-            ),
-            child: Icon(
-              _isMuted ? Icons.mic_off : Icons.mic,
-              color: Colors.white,
-              size: 20,
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          _isMuted ? 'Muted' : 'Live',
-          style: const TextStyle(fontSize: 10),
-        ),
-      ],
-    );
-  }
-  
-  Widget _buildTopBar() {
-    return Positioned(
-      top: 0,
-      left: 0,
-      right: 0,
-      child: Container(
-        height: 60,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            IconButton(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.arrow_back),
-            ),
-            Expanded(
-              child: Text(
-                _zoneData?['zone_name'] ?? 'Game Zone',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            IconButton(
-              onPressed: () {
-                setState(() {
-                  _chatExpanded = !_chatExpanded;
-                  if (_chatExpanded) {
-                    _chatAnimationController.forward();
-                  } else {
-                    _chatAnimationController.reverse();
-                  }
-                });
-              },
-              icon: Icon(_chatExpanded ? Icons.chat : Icons.chat_bubble_outline),
-              tooltip: 'Toggle Chat',
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildCollapsibleChat() {
-    return AnimatedBuilder(
-      animation: _chatAnimation,
-      builder: (context, child) {
-        return Positioned(
-          bottom: 0,
-          left: 120,
-          right: 80,
-          height: _chatAnimation.value * 200,
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                // Chat header
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.chat, color: Colors.white, size: 20),
-                      const SizedBox(width: 8),
-                      const Expanded(
-                        child: Text(
-                          'Live Chat',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _chatExpanded = false;
-                            _chatAnimationController.reverse();
-                          });
-                        },
-                        child: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
-                      ),
-                    ],
-                  ),
-                ),
-                // Chat messages
-                Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(8),
-                    itemCount: _chatMessages.length,
-                    itemBuilder: (context, index) {
-                      final msg = _chatMessages[index];
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Text(
-                          '${msg['sender']['name']}: ${msg['message']}',
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                // Chat input
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _chatTextController,
-                          decoration: InputDecoration(
-                            hintText: 'Type a message...',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            isDense: true,
-                          ),
-                          style: const TextStyle(fontSize: 12),
-                          onSubmitted: (_) => _sendChatMessage(),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      GestureDetector(
-                        onTap: _sendChatMessage,
-                        child: Container(
-                          width: 32,
-                          height: 32,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: AppTheme.primaryColor,
-                          ),
-                          child: const Icon(Icons.send, color: Colors.white, size: 16),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   void _handleChatMessage(Map<String, dynamic> data) {
     setState(() {
       _chatMessages.add({
@@ -903,54 +704,13 @@ class _GameZoneScreenState extends State<GameZoneScreen>
 
   @override
   void dispose() {
-    // Clean up resources first
-    try {
-      _bottleController.dispose();
-    } catch (e) {
-      print('Error disposing bottle controller: $e');
-    }
-    
-    try {
-      _chatAnimationController.dispose();
-    } catch (e) {
-      print('Error disposing chat controller: $e');
-    }
-    
+    _bottleController.dispose();
+    _chatAnimationController.dispose();
     _questionController.dispose();
     _chatTextController.dispose();
-    
-    // Close WebSocket
-    try {
-      _channel?.sink.close();
-    } catch (e) {
-      print('Error closing WebSocket: $e');
-    }
-    
-    // Clean up WebRTC resources
-    try {
-      _localStream?.getTracks().forEach((track) {
-        track.stop();
-      });
-      _localStream?.dispose();
-    } catch (e) {
-      print('Error disposing local stream: $e');
-    }
-    
-    try {
-      _peerConnection?.close();
-      _peerConnection?.dispose();
-    } catch (e) {
-      print('Error disposing peer connection: $e');
-    }
-    
-    // Restore orientation last
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-    
+    _channel?.sink.close();
+    _localStream?.dispose();
+    _peerConnection?.dispose();
     super.dispose();
   }
 }
