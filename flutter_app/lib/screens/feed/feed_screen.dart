@@ -149,7 +149,6 @@ class _FeedScreenState extends State<FeedScreen> {
           MaterialPageRoute(
             builder: (context) => UserProfileViewScreen(
               userId: userData['id'],
-              userData: userData,
             ),
           ),
         );
