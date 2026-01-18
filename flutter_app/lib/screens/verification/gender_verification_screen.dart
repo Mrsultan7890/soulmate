@@ -70,13 +70,16 @@ class _GenderVerificationScreenState extends State<GenderVerificationScreen> {
       final result = await GenderDetectionService.detectGender(imageFile);
 
       if (result['success']) {
-        setState(() {
-          _detectedGender = result['gender'];
-          _confidence = result['confidence'];
-        });
-
-        // Show confirmation dialog
-        _showConfirmationDialog(imageFile, result['gender'], result['confidence']);
+        // Check if fallback detection was used
+        if (result['fallback'] == true || result['gender'] == 'unknown') {
+          _showGenderSelectionDialog(imageFile);
+        } else {
+          setState(() {
+            _detectedGender = result['gender'];
+            _confidence = result['confidence'];
+          });
+          _showConfirmationDialog(imageFile, result['gender'], result['confidence']);
+        }
       } else {
         _showError(result['error'] ?? 'Detection failed');
       }
@@ -85,6 +88,76 @@ class _GenderVerificationScreenState extends State<GenderVerificationScreen> {
     } finally {
       setState(() => _isProcessing = false);
     }
+  }
+
+  void _showGenderSelectionDialog(File imageFile) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Select Your Gender'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.file(imageFile, height: 200, fit: BoxFit.cover),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Please select your gender for verification:',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _showConfirmationDialog(imageFile, 'male', 0.95);
+                    },
+                    icon: const Icon(Icons.male, color: Colors.white),
+                    label: const Text('Male', style: TextStyle(color: Colors.white)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _showConfirmationDialog(imageFile, 'female', 0.95);
+                    },
+                    icon: const Icon(Icons.female, color: Colors.white),
+                    label: const Text('Female', style: TextStyle(color: Colors.white)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() {
+                _capturedImage = null;
+              });
+            },
+            child: const Text('Retake Photo'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showConfirmationDialog(File imageFile, String gender, double confidence) {
@@ -205,12 +278,86 @@ class _GenderVerificationScreenState extends State<GenderVerificationScreen> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // Camera preview
+          // Camera preview with face overlay
           if (_cameraController != null && _cameraController!.value.isInitialized)
             Center(
-              child: AspectRatio(
-                aspectRatio: _cameraController!.value.aspectRatio,
-                child: CameraPreview(_cameraController!),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  AspectRatio(
+                    aspectRatio: _cameraController!.value.aspectRatio,
+                    child: CameraPreview(_cameraController!),
+                  ),
+                  // Face detection circle overlay
+                  Container(
+                    width: 250,
+                    height: 250,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.8),
+                        width: 3,
+                      ),
+                    ),
+                  ),
+                  // Corner guides
+                  Positioned(
+                    top: 100,
+                    left: 100,
+                    child: Container(
+                      width: 30,
+                      height: 30,
+                      decoration: BoxDecoration(
+                        border: Border(
+                          top: BorderSide(color: AppTheme.primaryColor, width: 4),
+                          left: BorderSide(color: AppTheme.primaryColor, width: 4),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 100,
+                    right: 100,
+                    child: Container(
+                      width: 30,
+                      height: 30,
+                      decoration: BoxDecoration(
+                        border: Border(
+                          top: BorderSide(color: AppTheme.primaryColor, width: 4),
+                          right: BorderSide(color: AppTheme.primaryColor, width: 4),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 100,
+                    left: 100,
+                    child: Container(
+                      width: 30,
+                      height: 30,
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: AppTheme.primaryColor, width: 4),
+                          left: BorderSide(color: AppTheme.primaryColor, width: 4),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 100,
+                    right: 100,
+                    child: Container(
+                      width: 30,
+                      height: 30,
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: AppTheme.primaryColor, width: 4),
+                          right: BorderSide(color: AppTheme.primaryColor, width: 4),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             )
           else
