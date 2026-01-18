@@ -1,0 +1,17 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF6B9D;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#C06C84;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background with rounded corners -->
+  <rect width="512" height="512" rx="80" ry="80" fill="url(#bgGradient)"/>
+  
+  <!-- Heart icon -->
+  <path d="M256 416c-7.7 0-15.3-2.9-21.2-8.8L108.8 281.2c-39.1-39.1-39.1-102.7 0-141.8 39.1-39.1 102.7-39.1 141.8 0L256 145l5.4-5.6c39.1-39.1 102.7-39.1 141.8 0 39.1 39.1 39.1 102.7 0 141.8L277.2 407.2c-5.9 5.9-13.5 8.8-21.2 8.8z" fill="white" transform="translate(0, -20) scale(0.8) translate(64, 64)"/>
+  
+  <!-- HeartLink text -->
+  <text x="256" y="380" font-family="Arial, sans-serif" font-size="48" font-weight="bold" text-anchor="middle" fill="white">HeartLink</text>
+</svg>
