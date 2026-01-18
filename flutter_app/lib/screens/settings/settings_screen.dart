@@ -449,7 +449,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
-}
+
   Future<void> _showAccountInfo() async {
     final authService = Provider.of<AuthService>(context, listen: false);
     try {
@@ -520,3 +520,4 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
     }
   }
+}
