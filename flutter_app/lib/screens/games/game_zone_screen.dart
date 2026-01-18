@@ -79,7 +79,6 @@ class _GameZoneScreenState extends State<GameZoneScreen>
     
     _loadZoneData();
     _connectWebSocket();
-    _initVoiceChat();
     
     // Set landscape after widget is built
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -87,6 +86,8 @@ class _GameZoneScreenState extends State<GameZoneScreen>
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
       ]);
+      // Initialize voice chat after orientation is set
+      _initVoiceChat();
     });
   }
 
@@ -583,7 +584,11 @@ class _GameZoneScreenState extends State<GameZoneScreen>
   // Voice Chat Methods
   Future<void> _initVoiceChat() async {
     try {
-      // Check if WebRTC is available and mounted
+      // Check if widget is still mounted
+      if (!mounted) return;
+      
+      // Add delay to ensure orientation change is complete
+      await Future.delayed(const Duration(milliseconds: 500));
       if (!mounted) return;
       
       // Request microphone permission first
@@ -596,32 +601,47 @@ class _GameZoneScreenState extends State<GameZoneScreen>
         return;
       }
       
-      _localStream = await navigator.mediaDevices.getUserMedia({
-        'audio': true,
-        'video': false,
-      }).catchError((error) {
+      // Add another check after permission request
+      if (!mounted) return;
+      
+      try {
+        _localStream = await navigator.mediaDevices.getUserMedia({
+          'audio': true,
+          'video': false,
+        });
+      } catch (error) {
         print('Microphone access failed: $error');
-        return null;
-      });
+        if (mounted) {
+          setState(() => _voiceConnected = false);
+        }
+        return;
+      }
       
       if (_localStream == null || !mounted) {
         if (mounted) setState(() => _voiceConnected = false);
         return;
       }
       
-      _peerConnection = await createPeerConnection({
-        'iceServers': [
-          {'urls': 'stun:stun.l.google.com:19302'},
-          {'urls': 'stun:stun1.l.google.com:19302'},
-        ]
-      }).catchError((error) {
+      try {
+        _peerConnection = await createPeerConnection({
+          'iceServers': [
+            {'urls': 'stun:stun.l.google.com:19302'},
+            {'urls': 'stun:stun1.l.google.com:19302'},
+          ]
+        });
+      } catch (error) {
         print('WebRTC connection failed: $error');
-        return null;
-      });
+        if (mounted) {
+          setState(() => _voiceConnected = false);
+        }
+        return;
+      }
       
       if (_peerConnection != null && _localStream != null && mounted) {
         _peerConnection!.addStream(_localStream!);
-        setState(() => _voiceConnected = true);
+        if (mounted) {
+          setState(() => _voiceConnected = true);
+        }
       }
     } catch (e) {
       print('Voice chat init error: $e');
@@ -883,7 +903,47 @@ class _GameZoneScreenState extends State<GameZoneScreen>
 
   @override
   void dispose() {
-    // Restore orientation
+    // Clean up resources first
+    try {
+      _bottleController.dispose();
+    } catch (e) {
+      print('Error disposing bottle controller: $e');
+    }
+    
+    try {
+      _chatAnimationController.dispose();
+    } catch (e) {
+      print('Error disposing chat controller: $e');
+    }
+    
+    _questionController.dispose();
+    _chatTextController.dispose();
+    
+    // Close WebSocket
+    try {
+      _channel?.sink.close();
+    } catch (e) {
+      print('Error closing WebSocket: $e');
+    }
+    
+    // Clean up WebRTC resources
+    try {
+      _localStream?.getTracks().forEach((track) {
+        track.stop();
+      });
+      _localStream?.dispose();
+    } catch (e) {
+      print('Error disposing local stream: $e');
+    }
+    
+    try {
+      _peerConnection?.close();
+      _peerConnection?.dispose();
+    } catch (e) {
+      print('Error disposing peer connection: $e');
+    }
+    
+    // Restore orientation last
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
@@ -891,13 +951,6 @@ class _GameZoneScreenState extends State<GameZoneScreen>
       DeviceOrientation.landscapeRight,
     ]);
     
-    _bottleController.dispose();
-    _chatAnimationController.dispose();
-    _questionController.dispose();
-    _chatTextController.dispose();
-    _channel?.sink.close();
-    _localStream?.dispose();
-    _peerConnection?.dispose();
     super.dispose();
   }
 }

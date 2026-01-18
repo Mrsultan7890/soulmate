@@ -3,9 +3,9 @@ from pydantic import BaseModel
 from typing import List, Optional
 import json
 from datetime import datetime, timedelta
-from ..config.database import get_db
-from ..services.auth_service import get_current_user
-from ..services.telegram_service import get_image_url
+from config.database import get_db
+from routes.auth import get_current_user
+from services.telegram_service import get_image_url
 
 router = APIRouter(prefix="/api/feed", tags=["feed"])
 
