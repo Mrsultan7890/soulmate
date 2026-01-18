@@ -7,6 +7,7 @@ import '../../utils/theme.dart';
 import '../../utils/api_constants.dart';
 import 'game_zone_screen.dart';
 import 'invite_friends_screen.dart';
+import 'invitations_screen.dart';
 
 class FriendZoneScreen extends StatefulWidget {
   const FriendZoneScreen({super.key});
@@ -103,6 +104,20 @@ class _FriendZoneScreenState extends State<FriendZoneScreen> {
         title: const Text('🎮 Friend Zone'),
         backgroundColor: Colors.white,
         elevation: 1,
+        actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const InvitationsScreen(),
+                ),
+              );
+            },
+            icon: const Icon(Icons.mail_outline),
+            tooltip: 'Invitations',
+          ),
+        ],
       ),
       body: Column(
         children: [

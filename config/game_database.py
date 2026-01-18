@@ -60,4 +60,19 @@ async def init_game_tables(db):
         )
     """)
     
+    # Zone invitations table
+    await db.execute("""
+        CREATE TABLE IF NOT EXISTS zone_invitations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            zone_id INTEGER NOT NULL,
+            invited_user_id INTEGER NOT NULL,
+            inviter_id INTEGER NOT NULL,
+            status TEXT DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (zone_id) REFERENCES friend_zones (id),
+            FOREIGN KEY (invited_user_id) REFERENCES users (id),
+            FOREIGN KEY (inviter_id) REFERENCES users (id)
+        )
+    """)
+    
     await db.commit()

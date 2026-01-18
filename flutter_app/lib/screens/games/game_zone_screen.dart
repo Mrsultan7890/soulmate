@@ -281,87 +281,93 @@ class _GameZoneScreenState extends State<GameZoneScreen>
         ],
       ),
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            // Members section
-            Container(
-              height: 80,
-              padding: const EdgeInsets.all(8),
-              child: Row(
-                children: [
-                  Text('Players: ${_members.length}/6', 
-                       style: const TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _members.length,
-                      itemBuilder: (context, index) {
-                        final member = _members[index];
-                        return Container(
-                          margin: const EdgeInsets.only(right: 8),
-                          child: Column(
-                            children: [
-                              CircleAvatar(
-                                radius: 20,
-                                backgroundColor: member['role'] == 'admin' 
-                                    ? AppTheme.primaryColor 
-                                    : Colors.blue,
-                                child: Text(
-                                  member['name'][0].toUpperCase(),
-                                  style: const TextStyle(color: Colors.white, fontSize: 12),
-                                ),
+            Column(
+              children: [
+                // Members section
+                Container(
+                  height: 80,
+                  padding: const EdgeInsets.all(8),
+                  child: Row(
+                    children: [
+                      Text('Players: ${_members.length}/6', 
+                           style: const TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _members.length,
+                          itemBuilder: (context, index) {
+                            final member = _members[index];
+                            return Container(
+                              margin: const EdgeInsets.only(right: 8),
+                              child: Column(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 20,
+                                    backgroundColor: member['role'] == 'admin' 
+                                        ? AppTheme.primaryColor 
+                                        : Colors.blue,
+                                    child: Text(
+                                      member['name'][0].toUpperCase(),
+                                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    member['name'],
+                                    style: const TextStyle(fontSize: 10),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                member['name'],
-                                style: const TextStyle(fontSize: 10),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-            
-            // Game area
-            Expanded(
-              child: _buildGameArea(),
-            ),
-            
-            // Voice controls (disabled)
-            Container(
-              height: 60,
-              padding: const EdgeInsets.all(8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.grey,
-                    ),
-                    child: const Icon(
-                      Icons.mic_off,
-                      color: Colors.white,
-                      size: 20,
-                    ),
+                ),
+                
+                // Game area
+                Expanded(
+                  child: _buildGameArea(),
+                ),
+                
+                // Voice controls (disabled)
+                Container(
+                  height: 60,
+                  padding: const EdgeInsets.all(8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.grey,
+                        ),
+                        child: const Icon(
+                          Icons.mic_off,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      const Text(
+                        'Voice chat disabled',
+                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 16),
-                  const Text(
-                    'Voice chat disabled',
-                    style: TextStyle(color: Colors.grey, fontSize: 12),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
+            // Chat overlay
+            if (_chatExpanded) _buildChatOverlay(),
           ],
         ),
       ),
@@ -536,6 +542,119 @@ class _GameZoneScreenState extends State<GameZoneScreen>
             textAlign: TextAlign.center,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildChatOverlay() {
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      height: 300,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            // Chat header
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.chat, color: Colors.white, size: 20),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Live Chat',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _chatExpanded = false;
+                        _chatAnimationController.reverse();
+                      });
+                    },
+                    child: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
+                  ),
+                ],
+              ),
+            ),
+            // Chat messages
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.all(8),
+                itemCount: _chatMessages.length,
+                itemBuilder: (context, index) {
+                  final msg = _chatMessages[index];
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 4),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${msg['sender']['name']}: ${msg['message']}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  );
+                },
+              ),
+            ),
+            // Chat input
+            Container(
+              padding: const EdgeInsets.all(8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _chatTextController,
+                      decoration: InputDecoration(
+                        hintText: 'Type a message...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        isDense: true,
+                      ),
+                      style: const TextStyle(fontSize: 12),
+                      onSubmitted: (_) => _sendChatMessage(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: _sendChatMessage,
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppTheme.primaryColor,
+                      ),
+                      child: const Icon(Icons.send, color: Colors.white, size: 16),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

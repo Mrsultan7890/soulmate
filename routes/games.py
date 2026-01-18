@@ -138,36 +138,76 @@ async def invite_user_to_zone(
     if zone['current_players'] >= zone['max_players']:
         raise HTTPException(400, "Zone is full")
     
-    # Send FCM invitation
-    try:
-        from services.fcm_notification_service import fcm_service
-        invited_user = await db.fetchone("""
-            SELECT fcm_token, name FROM users WHERE id = ?
-        """, (invited_user_id,))
-        
-        zone_info = await db.fetchone("""
-            SELECT zone_name FROM friend_zones WHERE id = ?
-        """, (zone_id,))
-        
-        if invited_user and invited_user['fcm_token']:
-            await fcm_service.send_notification(
-                fcm_token=invited_user['fcm_token'],
-                title="🎮 Friend Zone Invitation!",
-                body=f"{current_user['name']} invited you to join '{zone_info['zone_name']}' game zone!",
-                data={
-                    "type": "zone_invitation",
-                    "zone_id": str(zone_id),
-                    "zone_name": zone_info['zone_name'],
-                    "inviter_name": current_user['name']
-                }
-            )
-    except Exception as e:
-        print(f"Invitation notification failed: {e}")
+    # Get invited user info
+    invited_user = await db.fetchone("""
+        SELECT name FROM users WHERE id = ?
+    """, (invited_user_id,))
+    
+    if not invited_user:
+        raise HTTPException(404, "User not found")
+    
+    # Store invitation in database
+    await db.execute("""
+        INSERT INTO zone_invitations (zone_id, invited_user_id, inviter_id, status)
+        VALUES (?, ?, ?, 'pending')
+    """, (zone_id, invited_user_id, current_user['id']))
     
     return {
         "success": True,
-        "message": f"Invitation sent to {invited_user['name'] if invited_user else 'user'}!"
+        "message": f"Invitation sent to {invited_user['name']}!"
     }
+
+@router.get("/invitations")
+async def get_invitations(
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """Get pending invitations for current user"""
+    invitations = await db.fetchall("""
+        SELECT zi.*, fz.zone_name, u.name as inviter_name
+        FROM zone_invitations zi
+        JOIN friend_zones fz ON zi.zone_id = fz.id
+        JOIN users u ON zi.inviter_id = u.id
+        WHERE zi.invited_user_id = ? AND zi.status = 'pending'
+        ORDER BY zi.created_at DESC
+    """, (current_user['id'],))
+    
+    return {"invitations": [dict(inv) for inv in invitations]}
+
+@router.post("/accept-invitation")
+async def accept_invitation(
+    request: dict,
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """Accept zone invitation"""
+    invitation_id = request.get('invitation_id')
+    
+    # Get invitation details
+    invitation = await db.fetchone("""
+        SELECT * FROM zone_invitations 
+        WHERE id = ? AND invited_user_id = ? AND status = 'pending'
+    """, (invitation_id, current_user['id']))
+    
+    if not invitation:
+        raise HTTPException(404, "Invitation not found")
+    
+    # Join the zone
+    success = await game_service.join_zone(
+        db, invitation['zone_id'], current_user['id']
+    )
+    
+    if not success:
+        raise HTTPException(400, "Cannot join zone (full or already joined)")
+    
+    # Update invitation status
+    await db.execute("""
+        UPDATE zone_invitations SET status = 'accepted' WHERE id = ?
+    """, (invitation_id,))
+    
+    return {"success": True, "message": "Invitation accepted!"}
+
+@router.post("/zone/{zone_id}/start-game")
 async def start_game(
     zone_id: int,
     current_user: dict = Depends(get_current_user),
