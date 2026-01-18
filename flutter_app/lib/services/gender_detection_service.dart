@@ -80,7 +80,7 @@ class GenderDetectionService {
     }
   }
 
-  // Fallback detection when model fails
+  // Fallback detection when model fails - STRICT: No manual selection
   static Future<Map<String, dynamic>> _fallbackGenderDetection(File imageFile) async {
     try {
       final imageBytes = await imageFile.readAsBytes();
@@ -101,12 +101,10 @@ class GenderDetectionService {
         };
       }
 
-      // Return success with default values - user will manually select
+      // STRICT: Return error if model fails - no manual selection allowed
       return {
-        'success': true,
-        'gender': 'unknown', // Will prompt user to select
-        'confidence': 0.8,
-        'fallback': true,
+        'success': false,
+        'error': 'Gender detection model not available. Please try again later.',
       };
     } catch (e) {
       return {

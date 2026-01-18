@@ -14,57 +14,101 @@ async def get_profile_completion(
 ):
     """Calculate profile completion percentage"""
     score = 0
-    total_fields = 15
+    total_fields = 16  # Increased to include verification
+    missing_fields = []
     
-    # Basic info (5 fields)
-    if current_user.get("name"): score += 1
-    if current_user.get("age"): score += 1
-    if current_user.get("bio") and len(current_user["bio"]) > 20: score += 1
-    if current_user.get("location"): score += 1
+    # Basic info (4 fields)
+    if current_user.get("name"): 
+        score += 1
+    else:
+        missing_fields.append("name")
+        
+    if current_user.get("age"): 
+        score += 1
+    else:
+        missing_fields.append("age")
+        
+    if current_user.get("bio") and len(current_user["bio"]) > 20: 
+        score += 1
+    else:
+        missing_fields.append("bio")
+        
+    if current_user.get("location"): 
+        score += 1
+    else:
+        missing_fields.append("location")
     
     # Profile images (1 field)
     images = json.loads(current_user.get("profile_images", "[]"))
-    if len(images) >= 3: score += 1
+    if len(images) >= 3: 
+        score += 1
+    else:
+        missing_fields.append("photos")
     
     # Interests (1 field)
     interests = json.loads(current_user.get("interests", "[]"))
-    if len(interests) >= 3: score += 1
+    if len(interests) >= 3: 
+        score += 1
+    else:
+        missing_fields.append("interests")
     
     # Relationship intent (1 field)
-    if current_user.get("relationship_intent"): score += 1
+    if current_user.get("relationship_intent"): 
+        score += 1
+    else:
+        missing_fields.append("relationship intent")
     
     # Job & Education (2 fields)
-    if current_user.get("job_title"): score += 1
-    if current_user.get("education_level"): score += 1
+    if current_user.get("job_title"): 
+        score += 1
+    else:
+        missing_fields.append("job")
+        
+    if current_user.get("education_level"): 
+        score += 1
+    else:
+        missing_fields.append("education")
     
     # Physical attributes (2 fields)
-    if current_user.get("height"): score += 1
-    if current_user.get("body_type"): score += 1
+    if current_user.get("height"): 
+        score += 1
+    else:
+        missing_fields.append("height")
+        
+    if current_user.get("body_type"): 
+        score += 1
+    else:
+        missing_fields.append("body type")
     
     # Lifestyle (3 fields)
-    if current_user.get("smoking"): score += 1
-    if current_user.get("drinking"): score += 1
-    if current_user.get("diet_preference"): score += 1
+    if current_user.get("smoking"): 
+        score += 1
+    else:
+        missing_fields.append("smoking preference")
+        
+    if current_user.get("drinking"): 
+        score += 1
+    else:
+        missing_fields.append("drinking preference")
+        
+    if current_user.get("diet_preference"): 
+        score += 1
+    else:
+        missing_fields.append("diet preference")
+    
+    # Gender verification (1 field)
+    if current_user.get("is_verified") and current_user.get("gender"): 
+        score += 1
+    else:
+        missing_fields.append("gender verification")
     
     percentage = int((score / total_fields) * 100)
-    
-    missing_fields = []
-    if not current_user.get("bio") or len(current_user.get("bio", "")) < 20:
-        missing_fields.append("bio")
-    if len(images) < 3:
-        missing_fields.append("photos")
-    if len(interests) < 3:
-        missing_fields.append("interests")
-    if not current_user.get("job_title"):
-        missing_fields.append("job")
-    if not current_user.get("education_level"):
-        missing_fields.append("education")
     
     return {
         "percentage": percentage,
         "completed_fields": score,
         "total_fields": total_fields,
-        "missing_fields": missing_fields
+        "missing_fields": missing_fields[:5]  # Show only first 5 missing fields
     }
 
 @router.post("/update-activity")

@@ -306,8 +306,31 @@ async def init_db():
             print("✅ Added fcm_token column")
         else:
             print("✅ fcm_token column already exists")
+            
+        # Add gender and verification columns
+        if 'gender' not in column_names:
+            await db.execute("ALTER TABLE users ADD COLUMN gender TEXT")
+            await db.commit()
+            print("✅ Added gender column")
+        else:
+            print("✅ gender column already exists")
+            
+        if 'verification_confidence' not in column_names:
+            await db.execute("ALTER TABLE users ADD COLUMN verification_confidence REAL")
+            await db.commit()
+            print("✅ Added verification_confidence column")
+        else:
+            print("✅ verification_confidence column already exists")
+            
+        if 'verified_at' not in column_names:
+            await db.execute("ALTER TABLE users ADD COLUMN verified_at DATETIME")
+            await db.commit()
+            print("✅ Added verified_at column")
+        else:
+            print("✅ verified_at column already exists")
+            
     except Exception as e:
-        print(f"⚠️ Error checking/adding fcm_token column: {e}")
+        print(f"⚠️ Error checking/adding columns: {e}")
 
 async def get_db():
     """Dependency to get database connection"""
