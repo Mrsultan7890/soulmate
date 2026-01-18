@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../../services/auth_service.dart';
 import '../../utils/theme.dart';
+import '../../utils/api_constants.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -32,19 +35,48 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
     final authService = Provider.of<AuthService>(context, listen: false);
     
-    // Simulate password change API call
-    await Future.delayed(const Duration(seconds: 2));
-    
-    setState(() => _isLoading = false);
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Password changed successfully'),
-          backgroundColor: AppTheme.successColor,
-        ),
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConstants.baseUrl}/api/settings/change-password'),
+        headers: ApiConstants.getHeaders(token: authService.token),
+        body: jsonEncode({
+          'current_password': _currentPasswordController.text,
+          'new_password': _newPasswordController.text,
+        }),
       );
-      Navigator.of(context).pop();
+
+      if (response.statusCode == 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Password changed successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.of(context).pop();
+        }
+      } else {
+        final error = jsonDecode(response.body);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(error['detail'] ?? 'Failed to change password'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 

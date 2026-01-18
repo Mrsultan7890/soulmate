@@ -41,7 +41,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       final response = await http.get(
         Uri.parse('${ApiConstants.baseUrl}/api/settings/'),
-        headers: {'Authorization': 'Bearer ${authService.token}'},
+        headers: ApiConstants.getHeaders(token: authService.token),
       );
 
       if (response.statusCode == 200) {
@@ -53,6 +53,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _locationSharing = data['location_sharing'] ?? true;
           _loading = false;
         });
+      } else {
+        print('Failed to load settings: ${response.statusCode}');
+        setState(() => _loading = false);
       }
     } catch (e) {
       print('Error loading settings: $e');
@@ -65,18 +68,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (authService.token == null) return;
 
     try {
-      await http.put(
+      final response = await http.put(
         Uri.parse('${ApiConstants.baseUrl}/api/settings/'),
-        headers: {
-          'Authorization': 'Bearer ${authService.token}',
-          'Content-Type': 'application/json',
-        },
+        headers: ApiConstants.getHeaders(token: authService.token),
         body: json.encode({setting: value}),
       );
+      
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Setting updated successfully'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 1),
+          ),
+        );
+      } else {
+        print('Failed to update setting: ${response.body}');
+        _loadSettings(); // Revert on failure
+      }
     } catch (e) {
       print('Error updating setting: $e');
-      // Revert the change
-      _loadSettings();
+      _loadSettings(); // Revert on error
     }
   }
 
