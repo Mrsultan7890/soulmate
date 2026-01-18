@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
-import 'package:flutter_webrtc/flutter_webrtc.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'dart:convert';
 import 'dart:math';
 import '../../services/auth_service.dart';
@@ -49,11 +46,9 @@ class _GameZoneScreenState extends State<GameZoneScreen>
   late AnimationController _chatAnimationController;
   late Animation<double> _chatAnimation;
   
-  // Voice chat
-  RTCPeerConnection? _peerConnection;
-  MediaStream? _localStream;
-  bool _isMuted = false;
+  // Voice chat (disabled)
   bool _voiceConnected = false;
+  bool _isMuted = false;
   
   WebSocketChannel? _channel;
 
@@ -79,7 +74,6 @@ class _GameZoneScreenState extends State<GameZoneScreen>
     
     _loadZoneData();
     _connectWebSocket();
-    _initVoiceChat();
   }
 
   Future<void> _loadZoneData() async {
@@ -340,7 +334,7 @@ class _GameZoneScreenState extends State<GameZoneScreen>
               child: _buildGameArea(),
             ),
             
-            // Voice controls
+            // Voice controls (disabled)
             Container(
               height: 60,
               padding: const EdgeInsets.all(8),
@@ -350,32 +344,20 @@ class _GameZoneScreenState extends State<GameZoneScreen>
                   Container(
                     width: 40,
                     height: 40,
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       shape: BoxShape.circle,
-                      color: _voiceConnected ? Colors.green : Colors.grey,
+                      color: Colors.grey,
                     ),
-                    child: Icon(
-                      _voiceConnected ? Icons.mic : Icons.mic_off,
+                    child: const Icon(
+                      Icons.mic_off,
                       color: Colors.white,
                       size: 20,
                     ),
                   ),
                   const SizedBox(width: 16),
-                  GestureDetector(
-                    onTap: _toggleMute,
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: _isMuted ? Colors.red : AppTheme.primaryColor,
-                      ),
-                      child: Icon(
-                        _isMuted ? Icons.mic_off : Icons.mic,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
+                  const Text(
+                    'Voice chat disabled',
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
                   ),
                 ],
               ),
@@ -597,85 +579,7 @@ class _GameZoneScreenState extends State<GameZoneScreen>
     );
   }
 
-  // Voice Chat Methods
-  Future<void> _initVoiceChat() async {
-    try {
-      // Check if widget is still mounted
-      if (!mounted) return;
-      
-      // Add delay to ensure orientation change is complete
-      await Future.delayed(const Duration(milliseconds: 500));
-      if (!mounted) return;
-      
-      // Request microphone permission first
-      final permission = await Permission.microphone.request();
-      if (permission != PermissionStatus.granted) {
-        print('Microphone permission denied');
-        if (mounted) {
-          setState(() => _voiceConnected = false);
-        }
-        return;
-      }
-      
-      // Add another check after permission request
-      if (!mounted) return;
-      
-      try {
-        _localStream = await navigator.mediaDevices.getUserMedia({
-          'audio': true,
-          'video': false,
-        });
-      } catch (error) {
-        print('Microphone access failed: $error');
-        if (mounted) {
-          setState(() => _voiceConnected = false);
-        }
-        return;
-      }
-      
-      if (_localStream == null || !mounted) {
-        if (mounted) setState(() => _voiceConnected = false);
-        return;
-      }
-      
-      try {
-        _peerConnection = await createPeerConnection({
-          'iceServers': [
-            {'urls': 'stun:stun.l.google.com:19302'},
-            {'urls': 'stun:stun1.l.google.com:19302'},
-          ]
-        });
-      } catch (error) {
-        print('WebRTC connection failed: $error');
-        if (mounted) {
-          setState(() => _voiceConnected = false);
-        }
-        return;
-      }
-      
-      if (_peerConnection != null && _localStream != null && mounted) {
-        _peerConnection!.addStream(_localStream!);
-        if (mounted) {
-          setState(() => _voiceConnected = true);
-        }
-      }
-    } catch (e) {
-      print('Voice chat init error: $e');
-      if (mounted) {
-        setState(() => _voiceConnected = false);
-      }
-    }
-  }
-  
-  void _toggleMute() {
-    if (_localStream != null) {
-      _localStream!.getAudioTracks().forEach((track) {
-        track.enabled = _isMuted;
-      });
-      setState(() => _isMuted = !_isMuted);
-    }
-  }
-  
+
   void _handleChatMessage(Map<String, dynamic> data) {
     setState(() {
       _chatMessages.add({
@@ -709,8 +613,6 @@ class _GameZoneScreenState extends State<GameZoneScreen>
     _questionController.dispose();
     _chatTextController.dispose();
     _channel?.sink.close();
-    _localStream?.dispose();
-    _peerConnection?.dispose();
     super.dispose();
   }
 }
