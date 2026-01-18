@@ -113,6 +113,10 @@ async def register(user: UserCreate, db = Depends(get_db)):
     created_user = await db.fetchone("SELECT * FROM users WHERE email = ?", (user.email,))
     user_dict = dict(created_user)
     
+    # Create default user settings
+    from services.feed_service import feed_service
+    await feed_service.create_user_settings(user_dict["id"])
+    
     # Create access token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(

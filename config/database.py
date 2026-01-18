@@ -231,6 +231,61 @@ async def init_db():
         )
     """)
     
+    # Feed posts table
+    await db.execute("""
+        CREATE TABLE IF NOT EXISTS feed_posts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            image_file_id TEXT NOT NULL,
+            likes_count INTEGER DEFAULT 0,
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    """)
+    
+    # Feed likes table
+    await db.execute("""
+        CREATE TABLE IF NOT EXISTS feed_likes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            post_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (post_id) REFERENCES feed_posts (id),
+            FOREIGN KEY (user_id) REFERENCES users (id),
+            UNIQUE(post_id, user_id)
+        )
+    """)
+    
+    # Feed favorites table
+    await db.execute("""
+        CREATE TABLE IF NOT EXISTS feed_favorites (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            post_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (post_id) REFERENCES feed_posts (id),
+            FOREIGN KEY (user_id) REFERENCES users (id),
+            UNIQUE(post_id, user_id)
+        )
+    """)
+    
+    # User settings table
+    await db.execute("""
+        CREATE TABLE IF NOT EXISTS user_settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            feed_visibility BOOLEAN DEFAULT TRUE,
+            show_in_feed BOOLEAN DEFAULT TRUE,
+            notifications_enabled BOOLEAN DEFAULT TRUE,
+            location_sharing BOOLEAN DEFAULT TRUE,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id),
+            UNIQUE(user_id)
+        )
+    """)
+    
     await db.commit()
     print("✅ Database tables initialized")
     

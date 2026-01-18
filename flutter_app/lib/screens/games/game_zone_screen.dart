@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'dart:convert';
 import 'dart:math';
 import '../../services/auth_service.dart';
@@ -582,19 +583,29 @@ class _GameZoneScreenState extends State<GameZoneScreen>
   // Voice Chat Methods
   Future<void> _initVoiceChat() async {
     try {
-      // Check if WebRTC is available
+      // Check if WebRTC is available and mounted
       if (!mounted) return;
+      
+      // Request microphone permission first
+      final permission = await Permission.microphone.request();
+      if (permission != PermissionStatus.granted) {
+        print('Microphone permission denied');
+        if (mounted) {
+          setState(() => _voiceConnected = false);
+        }
+        return;
+      }
       
       _localStream = await navigator.mediaDevices.getUserMedia({
         'audio': true,
         'video': false,
       }).catchError((error) {
-        print('Microphone permission denied: $error');
+        print('Microphone access failed: $error');
         return null;
       });
       
-      if (_localStream == null) {
-        setState(() => _voiceConnected = false);
+      if (_localStream == null || !mounted) {
+        if (mounted) setState(() => _voiceConnected = false);
         return;
       }
       
@@ -608,11 +619,9 @@ class _GameZoneScreenState extends State<GameZoneScreen>
         return null;
       });
       
-      if (_peerConnection != null && _localStream != null) {
+      if (_peerConnection != null && _localStream != null && mounted) {
         _peerConnection!.addStream(_localStream!);
-        if (mounted) {
-          setState(() => _voiceConnected = true);
-        }
+        setState(() => _voiceConnected = true);
       }
     } catch (e) {
       print('Voice chat init error: $e');

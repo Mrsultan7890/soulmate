@@ -8,6 +8,7 @@ import '../../utils/theme.dart';
 import 'discover_screen.dart';
 import '../matches/matches_screen.dart';
 import '../profile/profile_screen.dart';
+import '../feed/feed_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,6 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final List<Widget> _screens = [
     const DiscoverScreen(),
+    const FeedScreen(),
     const MatchesScreen(),
     const ProfileScreen(),
   ];
@@ -65,8 +67,9 @@ class _HomeScreenState extends State<HomeScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildNavItem(0, Icons.explore, 'Discover'),
-                _buildNavItem(1, Icons.favorite, 'Matches'),
-                _buildNavItem(2, Icons.person, 'Profile'),
+                _buildNavItem(1, Icons.photo_library, 'Feed'),
+                _buildNavItem(2, Icons.favorite, 'Matches'),
+                _buildNavItem(3, Icons.person, 'Profile'),
               ],
             ),
           ),

@@ -35,7 +35,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Last updated: January 15, 2024',
+                    'Last updated: December 2024',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: AppTheme.textSecondary,
                     ),
@@ -43,31 +43,46 @@ class PrivacyPolicyScreen extends StatelessWidget {
                   const SizedBox(height: 24),
                   _buildSection(
                     'Information We Collect',
-                    'We collect information you provide directly to us, such as when you create an account, update your profile, or communicate with other users.',
+                    '• Profile information (name, age, photos, bio)\n'
+                    '• Location data (GPS coordinates for matching)\n'
+                    '• Usage data (swipes, matches, messages)\n'
+                    '• Device information (for security and optimization)',
                   ),
                   _buildSection(
                     'How We Use Your Information',
-                    'We use the information we collect to provide, maintain, and improve our services, including matching you with other users and facilitating communication.',
+                    '• Match you with compatible users nearby\n'
+                    '• Show your profile in the Feed (if enabled)\n'
+                    '• Enable messaging and video calls\n'
+                    '• Improve our matching algorithm\n'
+                    '• Ensure platform safety and security',
                   ),
                   _buildSection(
-                    'Information Sharing',
-                    'We do not sell, trade, or otherwise transfer your personal information to third parties without your consent, except as described in this policy.',
+                    'Location Data',
+                    'We use GPS location to show you nearby users and help others find you. Location is updated automatically for accuracy. You can control location sharing in Settings.',
                   ),
                   _buildSection(
-                    'Data Security',
-                    'We implement appropriate security measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction.',
+                    'Feed & Photo Sharing',
+                    'Your profile photos may appear in other users\' feeds unless you disable this in Settings. Users can like and save your photos, but cannot download them.',
                   ),
                   _buildSection(
-                    'Face Verification',
-                    'Face verification is processed locally on your device. We do not store biometric data or send it to external services.',
+                    'Video Calls & Voice Chat',
+                    'Video/audio calls use peer-to-peer technology. We do not record or store call content. Voice chat in games is real-time and not saved.',
                   ),
                   _buildSection(
-                    'Your Rights',
-                    'You have the right to access, update, or delete your personal information. You can also request a copy of your data or ask us to stop processing it.',
+                    'Data Storage',
+                    'Photos are stored securely via Telegram\'s infrastructure. Messages and user data are encrypted. We do not sell your data to third parties.',
+                  ),
+                  _buildSection(
+                    'Your Privacy Controls',
+                    '• Control feed visibility\n'
+                    '• Manage location sharing\n'
+                    '• Block or report users\n'
+                    '• Delete your account anytime\n'
+                    '• Download your data',
                   ),
                   _buildSection(
                     'Contact Us',
-                    'If you have any questions about this Privacy Policy, please contact us at privacy@heartlink.app',
+                    'Questions about privacy? Contact us at:\nprivacy@heartlink.app\n\nFor data deletion requests:\ndelete@heartlink.app',
                   ),
                   const SizedBox(height: 24),
                   Container(
@@ -82,7 +97,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            'Your privacy is important to us. We are committed to protecting your personal information.',
+                            'Your privacy matters. We use minimal data, store it securely, and give you full control over your information.',
                             style: TextStyle(color: AppTheme.primaryColor),
                           ),
                         ),

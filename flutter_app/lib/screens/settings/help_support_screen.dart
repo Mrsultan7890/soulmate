@@ -51,23 +51,43 @@ class HelpSupportScreen extends StatelessWidget {
               const SizedBox(height: 16),
               _buildFAQItem(
                 'How do I verify my profile?',
-                'Go to Settings > Face Verification and follow the instructions to verify your identity using your camera.',
+                'Upload clear photos and complete your profile information. Our team reviews profiles to ensure authenticity.',
+              ),
+              _buildFAQItem(
+                'How does the Feed work?',
+                'Your profile photos appear in other users\' feeds. They can like and save your photos. You can control feed visibility in Settings.',
               ),
               _buildFAQItem(
                 'How does matching work?',
-                'Our algorithm matches you with users based on your preferences, location, and interests. Swipe right to like, left to pass.',
+                'Our algorithm matches you based on preferences, location, and interests. Swipe right to like, left to pass.',
               ),
               _buildFAQItem(
                 'Can I change my location?',
-                'Yes, you can update your location in the Edit Profile section. This will affect who you see and who can see you.',
+                'Location is automatically detected via GPS for accuracy. You can update it by moving to a new location and refreshing the app.',
+              ),
+              _buildFAQItem(
+                'What is Friend Zone game?',
+                'A multiplayer game where you can create zones, invite friends, play bottle spin, ask questions, and chat live with voice support.',
+              ),
+              _buildFAQItem(
+                'How do video calls work?',
+                'Once matched, you can start video/audio calls directly from the chat screen. Calls use P2P technology for privacy.',
               ),
               _buildFAQItem(
                 'How do I report someone?',
-                'Go to their profile and tap the report button, or contact our support team directly.',
+                'Tap the three dots on their profile or in chat, select "Report", choose a reason, and submit. We review all reports promptly.',
               ),
               _buildFAQItem(
                 'How do I delete my account?',
-                'Contact our support team at support@heartlink.app to request account deletion.',
+                'Go to Settings > Account > Delete Account. This action is permanent and cannot be undone.',
+              ),
+              _buildFAQItem(
+                'Why can\'t I see some users?',
+                'Users may have restricted their visibility, or they might be outside your preference filters or location range.',
+              ),
+              _buildFAQItem(
+                'How do I turn off notifications?',
+                'Go to Settings > Notifications to customize which notifications you receive.',
               ),
               const SizedBox(height: 24),
               Text(
@@ -79,19 +99,25 @@ class HelpSupportScreen extends StatelessWidget {
                 'Email Support',
                 'Get help via email',
                 Icons.email,
-                () => _showContactDialog(context, 'Email', 'support@heartlink.app'),
+                () => _showContactDialog(context, 'Email Support', 'Send your questions to:\nsupport@heartlink.app\n\nWe typically respond within 24 hours.'),
               ),
               _buildContactOption(
-                'Live Chat',
-                'Chat with our support team',
-                Icons.chat,
-                () => _showContactDialog(context, 'Live Chat', 'Coming soon!'),
+                'Report Bug',
+                'Report technical issues',
+                Icons.bug_report,
+                () => _showContactDialog(context, 'Bug Report', 'Found a bug? Help us improve!\n\nEmail: bugs@heartlink.app\nInclude: Device model, app version, and steps to reproduce.'),
               ),
               _buildContactOption(
-                'FAQ',
-                'Browse frequently asked questions',
-                Icons.quiz,
-                () => _showFAQDialog(context),
+                'Feature Request',
+                'Suggest new features',
+                Icons.lightbulb_outline,
+                () => _showContactDialog(context, 'Feature Request', 'Have an idea? We\'d love to hear it!\n\nEmail: features@heartlink.app\nTell us what you\'d like to see in HeartLink.'),
+              ),
+              _buildContactOption(
+                'Safety Center',
+                'Learn about safety features',
+                Icons.security,
+                () => _showSafetyDialog(context),
               ),
             ],
           ),
@@ -173,6 +199,29 @@ class HelpSupportScreen extends StatelessWidget {
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  void _showSafetyDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Safety Tips'),
+        content: const Text(
+          '• Never share personal information\n'
+          '• Meet in public places\n'
+          '• Trust your instincts\n'
+          '• Report suspicious behavior\n'
+          '• Use in-app video calls first\n'
+          '• Tell someone about your plans'
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Got it'),
           ),
         ],
       ),

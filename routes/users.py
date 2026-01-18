@@ -159,6 +159,10 @@ async def upload_profile_image(
         )
         await db.commit()
         
+        # Auto-refresh feed posts
+        from services.feed_service import feed_service
+        await feed_service.refresh_user_feed_posts(current_user["id"], current_images)
+        
         return {
             "message": "Image uploaded successfully",
             "image_count": len(current_images),
@@ -196,6 +200,10 @@ async def delete_profile_image(
             (json.dumps(current_images), current_user["id"])
         )
         await db.commit()
+        
+        # Auto-refresh feed posts
+        from services.feed_service import feed_service
+        await feed_service.refresh_user_feed_posts(current_user["id"], current_images)
         
         return {
             "message": "Image deleted successfully",

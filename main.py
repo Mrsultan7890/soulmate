@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import uvicorn
 
-from routes import auth, users, matches, chat, safety, enhanced_chat, safety_tips, fcm, gender_verification, calls, profile_features, games
+from routes import auth, users, matches, chat, safety, enhanced_chat, safety_tips, fcm, gender_verification, calls, profile_features, games, feed, settings
 from config.database import init_db
 from config.settings import settings
 
@@ -39,6 +39,8 @@ app.include_router(gender_verification.router, prefix="/api/verification", tags=
 app.include_router(calls.router, prefix="/api/calls", tags=["Video/Audio Calls"])
 app.include_router(profile_features.router, prefix="/api/profile", tags=["Profile Features"])
 app.include_router(games.router, prefix="/api/games", tags=["Friend Zone Games"])
+app.include_router(feed.router, tags=["Feed"])
+app.include_router(settings.router, tags=["Settings"])
 
 app.include_router(fcm.router, prefix="/api/users", tags=["FCM"])
 
