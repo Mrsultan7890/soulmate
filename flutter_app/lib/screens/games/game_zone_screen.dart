@@ -40,12 +40,12 @@ class _GameZoneScreenState extends State<GameZoneScreen>
   Map<String, dynamic>? _answerer;
   bool _showQuestionInput = false;
   final _questionController = TextEditingController();
-  final _chatController = TextEditingController();
+  final _chatTextController = TextEditingController();
   List<Map<String, dynamic>> _chatMessages = [];
   
   // Chat collapse
   bool _chatExpanded = false;
-  late AnimationController _chatController;
+  late AnimationController _chatAnimationController;
   late Animation<double> _chatAnimation;
   
   // Voice chat
@@ -74,12 +74,12 @@ class _GameZoneScreenState extends State<GameZoneScreen>
       CurvedAnimation(parent: _bottleController, curve: Curves.easeOut),
     );
     
-    _chatController = AnimationController(
+    _chatAnimationController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
     _chatAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _chatController, curve: Curves.easeInOut),
+      CurvedAnimation(parent: _chatAnimationController, curve: Curves.easeInOut),
     );
     
     _loadZoneData();
@@ -690,9 +690,9 @@ class _GameZoneScreenState extends State<GameZoneScreen>
                 setState(() {
                   _chatExpanded = !_chatExpanded;
                   if (_chatExpanded) {
-                    _chatController.forward();
+                    _chatAnimationController.forward();
                   } else {
-                    _chatController.reverse();
+                    _chatAnimationController.reverse();
                   }
                 });
               },
@@ -749,7 +749,7 @@ class _GameZoneScreenState extends State<GameZoneScreen>
                         onTap: () {
                           setState(() {
                             _chatExpanded = false;
-                            _chatController.reverse();
+                            _chatAnimationController.reverse();
                           });
                         },
                         child: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
@@ -781,7 +781,7 @@ class _GameZoneScreenState extends State<GameZoneScreen>
                     children: [
                       Expanded(
                         child: TextField(
-                          controller: _chatController,
+                          controller: _chatTextController,
                           decoration: InputDecoration(
                             hintText: 'Type a message...',
                             border: OutlineInputBorder(
@@ -829,18 +829,18 @@ class _GameZoneScreenState extends State<GameZoneScreen>
   }
 
   void _sendChatMessage() {
-    if (_chatController.text.trim().isEmpty) return;
+    if (_chatTextController.text.trim().isEmpty) return;
     
     final authService = Provider.of<AuthService>(context, listen: false);
     final message = {
       'type': 'chat_message',
-      'message': _chatController.text.trim(),
+      'message': _chatTextController.text.trim(),
       'sender': {'id': authService.currentUser?.id, 'name': authService.currentUser?.name},
       'timestamp': DateTime.now().toIso8601String(),
     };
     
     _channel?.sink.add(json.encode(message));
-    _chatController.clear();
+    _chatTextController.clear();
   }
 
 
@@ -855,8 +855,9 @@ class _GameZoneScreenState extends State<GameZoneScreen>
     ]);
     
     _bottleController.dispose();
-    _chatController.dispose();
+    _chatAnimationController.dispose();
     _questionController.dispose();
+    _chatTextController.dispose();
     _channel?.sink.close();
     _localStream?.dispose();
     _peerConnection?.dispose();
