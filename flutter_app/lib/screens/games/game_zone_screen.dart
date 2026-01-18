@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'dart:convert';
 import 'dart:math';
 import '../../services/auth_service.dart';
 import '../../utils/theme.dart';
 import '../../utils/api_constants.dart';
+import 'game_rules_screen.dart';
+import 'game_settings_screen.dart';
 
 class GameZoneScreen extends StatefulWidget {
   final int zoneId;
@@ -32,15 +36,36 @@ class _GameZoneScreenState extends State<GameZoneScreen>
   
   // Game state
   Map<String, dynamic>? _currentPlayer;
-  String? _truthQuestion;
-  String? _dareChallenge;
-  bool _showChoice = false;
+  String? _currentQuestion;
+  Map<String, dynamic>? _answerer;
+  bool _showQuestionInput = false;
+  final _questionController = TextEditingController();
+  final _chatController = TextEditingController();
+  List<Map<String, dynamic>> _chatMessages = [];
+  
+  // Chat collapse
+  bool _chatExpanded = false;
+  late AnimationController _chatController;
+  late Animation<double> _chatAnimation;
+  
+  // Voice chat
+  RTCPeerConnection? _peerConnection;
+  MediaStream? _localStream;
+  bool _isMuted = false;
+  bool _voiceConnected = false;
   
   WebSocketChannel? _channel;
 
   @override
   void initState() {
     super.initState();
+    
+    // Lock to landscape
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    
     _bottleController = AnimationController(
       duration: const Duration(seconds: 3),
       vsync: this,
@@ -49,8 +74,17 @@ class _GameZoneScreenState extends State<GameZoneScreen>
       CurvedAnimation(parent: _bottleController, curve: Curves.easeOut),
     );
     
+    _chatController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _chatAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _chatController, curve: Curves.easeInOut),
+    );
+    
     _loadZoneData();
     _connectWebSocket();
+    _initVoiceChat();
   }
 
   Future<void> _loadZoneData() async {
@@ -108,8 +142,14 @@ class _GameZoneScreenState extends State<GameZoneScreen>
       case 'bottle_spun':
         _handleBottleSpin(data['result']);
         break;
-      case 'choice_made':
-        _handleChoiceMade(data);
+      case 'question_asked':
+        _handleQuestionAsked(data['result']);
+        break;
+      case 'answer_given':
+        _handleAnswerGiven(data);
+        break;
+      case 'chat_message':
+        _handleChatMessage(data);
         break;
     }
   }
@@ -130,24 +170,39 @@ class _GameZoneScreenState extends State<GameZoneScreen>
       setState(() {
         _currentAngle = targetAngle;
         _currentPlayer = result['selected_player'];
-        _truthQuestion = result['truth_question'];
-        _dareChallenge = result['dare_challenge'];
-        _showChoice = true;
+        _showQuestionInput = true;
       });
     });
   }
 
-  void _handleChoiceMade(Map<String, dynamic> data) {
+  void _handleQuestionAsked(Map<String, dynamic> result) {
+    setState(() {
+      _currentQuestion = result['question'];
+      _answerer = result['answerer'];
+      _showQuestionInput = false;
+    });
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('${data['player']['name']} chose ${data['choice']}!'),
+        content: Text('${result['questioner']['name']} asked: ${result['question']}'),
         backgroundColor: AppTheme.primaryColor,
+      ),
+    );
+  }
+
+  void _handleAnswerGiven(Map<String, dynamic> data) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${data['answerer']['name']} answered!'),
+        backgroundColor: Colors.green,
       ),
     );
     
     setState(() {
-      _showChoice = false;
+      _showQuestionInput = false;
       _currentPlayer = null;
+      _currentQuestion = null;
+      _answerer = null;
     });
   }
 
@@ -179,12 +234,31 @@ class _GameZoneScreenState extends State<GameZoneScreen>
     }
   }
 
-  void _makeChoice(String choice) {
-    _channel?.sink.add(json.encode({
-      'type': 'choice_made',
-      'choice': choice,
-      'player': _currentPlayer,
-    }));
+  Future<void> _askQuestion() async {
+    if (_questionController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a question')),
+      );
+      return;
+    }
+
+    final authService = Provider.of<AuthService>(context, listen: false);
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConstants.baseUrl}/api/games/zone/${widget.zoneId}/ask-question'),
+        headers: ApiConstants.getHeaders(token: authService.token),
+        body: jsonEncode({
+          'question': _questionController.text.trim(),
+          'type': 'text',
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        _questionController.clear();
+      }
+    } catch (e) {
+      print('Error asking question: $e');
+    }
   }
 
   @override
@@ -196,66 +270,93 @@ class _GameZoneScreenState extends State<GameZoneScreen>
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_zoneData?['zone_name'] ?? 'Game Zone'),
-        backgroundColor: Colors.white,
-        elevation: 1,
-      ),
-      body: Column(
+      body: Stack(
         children: [
-          _buildMembersSection(),
-          Expanded(child: _buildGameArea()),
-          if (_gameStarted) _buildGameControls(),
+          // Main game area
+          Row(
+            children: [
+              // Left side - Members
+              Container(
+                width: 120,
+                color: Colors.grey[100],
+                child: _buildMembersSection(),
+              ),
+              // Center - Game area
+              Expanded(
+                child: _buildGameArea(),
+              ),
+              // Right side - Voice controls
+              Container(
+                width: 80,
+                color: Colors.grey[50],
+                child: _buildVoiceControls(),
+              ),
+            ],
+          ),
+          // Collapsible chat
+          _buildCollapsibleChat(),
+          // Top bar
+          _buildTopBar(),
         ],
       ),
     );
   }
 
   Widget _buildMembersSection() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Players (${_members.length}/6)',
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          child: Text(
+            'Players\n${_members.length}/6',
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 60,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: _members.length,
-              itemBuilder: (context, index) {
-                final member = _members[index];
-                return Container(
-                  margin: const EdgeInsets.only(right: 12),
-                  child: Column(
-                    children: [
-                      CircleAvatar(
-                        radius: 20,
-                        backgroundColor: member['role'] == 'admin' 
-                            ? AppTheme.primaryColor 
-                            : Colors.blue,
-                        child: Text(
-                          member['name'][0].toUpperCase(),
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                        ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            itemCount: _members.length,
+            itemBuilder: (context, index) {
+              final member = _members[index];
+              return Container(
+                margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                child: Column(
+                  children: [
+                    CircleAvatar(
+                      radius: 25,
+                      backgroundColor: member['role'] == 'admin' 
+                          ? AppTheme.primaryColor 
+                          : Colors.blue,
+                      child: Text(
+                        member['name'][0].toUpperCase(),
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        member['name'],
-                        style: const TextStyle(fontSize: 12),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      member['name'],
+                      style: const TextStyle(fontSize: 10),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    // Voice indicator
+                    Container(
+                      width: 8,
+                      height: 8,
+                      margin: const EdgeInsets.only(top: 2),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _voiceConnected ? Colors.green : Colors.grey,
                       ),
-                    ],
-                  ),
-                );
-              },
-            ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -265,11 +366,11 @@ class _GameZoneScreenState extends State<GameZoneScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.sports_esports, size: 80, color: Colors.grey[400]),
+            Icon(Icons.sports_esports, size: 100, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
               _isAdmin ? 'Start the game when ready!' : 'Waiting for admin to start...',
-              style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+              style: TextStyle(fontSize: 20, color: Colors.grey[600]),
             ),
             if (_isAdmin) ...[
               const SizedBox(height: 20),
@@ -279,7 +380,8 @@ class _GameZoneScreenState extends State<GameZoneScreen>
                 label: const Text('Start Game'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  textStyle: const TextStyle(fontSize: 18),
                 ),
               ),
             ],
@@ -298,16 +400,21 @@ class _GameZoneScreenState extends State<GameZoneScreen>
             return Transform.rotate(
               angle: _bottleAnimation.value * pi / 180,
               child: Container(
-                width: 200,
-                height: 200,
+                width: 250,
+                height: 250,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.grey[300]!, width: 2),
+                  border: Border.all(color: Colors.grey[300]!, width: 3),
+                  gradient: LinearGradient(
+                    colors: [Colors.white, Colors.grey[100]!],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                 ),
                 child: const Center(
                   child: Icon(
                     Icons.local_drink,
-                    size: 60,
+                    size: 80,
                     color: AppTheme.primaryColor,
                   ),
                 ),
@@ -316,27 +423,30 @@ class _GameZoneScreenState extends State<GameZoneScreen>
           },
         ),
         
-        const SizedBox(height: 20),
+        const SizedBox(height: 30),
         
-        if (_showChoice && _currentPlayer != null) _buildChoiceDialog(),
+        if (_showQuestionInput && _currentPlayer != null) _buildQuestionInput(),
         
-        if (!_showChoice)
+        if (!_showQuestionInput && _currentQuestion == null)
           ElevatedButton.icon(
             onPressed: _spinBottle,
             icon: const Icon(Icons.refresh),
             label: const Text('Spin Bottle'),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryColor,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              textStyle: const TextStyle(fontSize: 18),
             ),
           ),
+        
+        if (_currentQuestion != null) _buildCurrentQuestion(),
       ],
     );
   }
 
-  Widget _buildChoiceDialog() {
+  Widget _buildQuestionInput() {
     return Container(
-      margin: const EdgeInsets.all(16),
+      margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -352,72 +462,71 @@ class _GameZoneScreenState extends State<GameZoneScreen>
       child: Column(
         children: [
           Text(
-            '${_currentPlayer!['name']}, choose:',
+            '${_currentPlayer!['name']}, ask your question:',
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () => _makeChoice('Truth'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: const Text('Truth'),
-                ),
+          TextField(
+            controller: _questionController,
+            decoration: InputDecoration(
+              hintText: 'Type your question here...',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () => _makeChoice('Dare'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: const Text('Dare'),
-                ),
-              ),
-            ],
+              prefixIcon: const Icon(Icons.help_outline),
+            ),
+            maxLines: 2,
+            textCapitalization: TextCapitalization.sentences,
           ),
           
           const SizedBox(height: 16),
           
-          if (_truthQuestion != null)
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue[50],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Truth:', style: TextStyle(fontWeight: FontWeight.bold)),
-                  Text(_truthQuestion!),
-                ],
-              ),
+          ElevatedButton.icon(
+            onPressed: _askQuestion,
+            icon: const Icon(Icons.send),
+            label: const Text('Ask Question'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
-          
-          const SizedBox(height: 8),
-          
-          if (_dareChallenge != null)
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.red[50],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Dare:', style: TextStyle(fontWeight: FontWeight.bold)),
-                  Text(_dareChallenge!),
-                ],
-              ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCurrentQuestion() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFF6B6B), Color(0xFFFF8E8E)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.question_mark, color: Colors.white, size: 32),
+          const SizedBox(height: 12),
+          Text(
+            _currentQuestion!,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
             ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '${_answerer!['name']}, it\'s your turn to answer!',
+            style: const TextStyle(color: Colors.white70, fontSize: 14),
+            textAlign: TextAlign.center,
+          ),
         ],
       ),
     );
@@ -434,12 +543,26 @@ class _GameZoneScreenState extends State<GameZoneScreen>
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           IconButton(
-            onPressed: () {},
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const GameRulesScreen(),
+                ),
+              );
+            },
             icon: const Icon(Icons.help_outline),
             tooltip: 'Game Rules',
           ),
           IconButton(
-            onPressed: () {},
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => GameSettingsScreen(zoneId: widget.zoneId),
+                ),
+              );
+            },
             icon: const Icon(Icons.settings),
             tooltip: 'Settings',
           ),
@@ -448,10 +571,295 @@ class _GameZoneScreenState extends State<GameZoneScreen>
     );
   }
 
+  // Voice Chat Methods
+  Future<void> _initVoiceChat() async {
+    try {
+      _localStream = await navigator.mediaDevices.getUserMedia({
+        'audio': true,
+        'video': false,
+      });
+      
+      _peerConnection = await createPeerConnection({
+        'iceServers': [
+          {'urls': 'stun:stun.l.google.com:19302'},
+          {'urls': 'stun:stun1.l.google.com:19302'},
+        ]
+      });
+      
+      _peerConnection!.addStream(_localStream!);
+      
+      setState(() => _voiceConnected = true);
+    } catch (e) {
+      print('Voice chat init error: $e');
+    }
+  }
+  
+  void _toggleMute() {
+    if (_localStream != null) {
+      _localStream!.getAudioTracks().forEach((track) {
+        track.enabled = _isMuted;
+      });
+      setState(() => _isMuted = !_isMuted);
+    }
+  }
+  
+  Widget _buildVoiceControls() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // Voice status
+        Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: _voiceConnected ? Colors.green : Colors.grey,
+          ),
+          child: Icon(
+            _voiceConnected ? Icons.mic : Icons.mic_off,
+            color: Colors.white,
+            size: 24,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          _voiceConnected ? 'Connected' : 'Connecting...',
+          style: const TextStyle(fontSize: 10),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 20),
+        
+        // Mute button
+        GestureDetector(
+          onTap: _toggleMute,
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _isMuted ? Colors.red : AppTheme.primaryColor,
+            ),
+            child: Icon(
+              _isMuted ? Icons.mic_off : Icons.mic,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _isMuted ? 'Muted' : 'Live',
+          style: const TextStyle(fontSize: 10),
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildTopBar() {
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      child: Container(
+        height: 60,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.arrow_back),
+            ),
+            Expanded(
+              child: Text(
+                _zoneData?['zone_name'] ?? 'Game Zone',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            IconButton(
+              onPressed: () {
+                setState(() {
+                  _chatExpanded = !_chatExpanded;
+                  if (_chatExpanded) {
+                    _chatController.forward();
+                  } else {
+                    _chatController.reverse();
+                  }
+                });
+              },
+              icon: Icon(_chatExpanded ? Icons.chat : Icons.chat_bubble_outline),
+              tooltip: 'Toggle Chat',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildCollapsibleChat() {
+    return AnimatedBuilder(
+      animation: _chatAnimation,
+      builder: (context, child) {
+        return Positioned(
+          bottom: 0,
+          left: 120,
+          right: 80,
+          height: _chatAnimation.value * 200,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                // Chat header
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.chat, color: Colors.white, size: 20),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Live Chat',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _chatExpanded = false;
+                            _chatController.reverse();
+                          });
+                        },
+                        child: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
+                      ),
+                    ],
+                  ),
+                ),
+                // Chat messages
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(8),
+                    itemCount: _chatMessages.length,
+                    itemBuilder: (context, index) {
+                      final msg = _chatMessages[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          '${msg['sender']['name']}: ${msg['message']}',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                // Chat input
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _chatController,
+                          decoration: InputDecoration(
+                            hintText: 'Type a message...',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            isDense: true,
+                          ),
+                          style: const TextStyle(fontSize: 12),
+                          onSubmitted: (_) => _sendChatMessage(),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: _sendChatMessage,
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppTheme.primaryColor,
+                          ),
+                          child: const Icon(Icons.send, color: Colors.white, size: 16),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _handleChatMessage(Map<String, dynamic> data) {
+    setState(() {
+      _chatMessages.add({
+        'message': data['message'],
+        'sender': data['sender'],
+        'timestamp': data['timestamp'],
+      });
+    });
+  }
+
+  void _sendChatMessage() {
+    if (_chatController.text.trim().isEmpty) return;
+    
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final message = {
+      'type': 'chat_message',
+      'message': _chatController.text.trim(),
+      'sender': {'id': authService.currentUser?.id, 'name': authService.currentUser?.name},
+      'timestamp': DateTime.now().toIso8601String(),
+    };
+    
+    _channel?.sink.add(json.encode(message));
+    _chatController.clear();
+  }
+
+
   @override
   void dispose() {
+    // Restore orientation
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    
     _bottleController.dispose();
+    _chatController.dispose();
+    _questionController.dispose();
     _channel?.sink.close();
+    _localStream?.dispose();
+    _peerConnection?.dispose();
     super.dispose();
   }
 }

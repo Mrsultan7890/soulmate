@@ -820,6 +820,28 @@ async def update_fcm_token(
         )
         await db.commit()
         
+        # Check for pending welcome notification
+        try:
+            from services.fcm_notification_service import fcm_service as global_fcm
+            pending_notifications = getattr(global_fcm, 'pending_welcome_notifications', {})
+            
+            if current_user['id'] in pending_notifications:
+                welcome_data = pending_notifications[current_user['id']]
+                print(f"🎉 Sending delayed welcome notification for user {current_user['id']}")
+                
+                await global_fcm.send_notification(
+                    fcm_token=fcm_token,
+                    title="Welcome back! 👋",
+                    body=f"Hi {welcome_data['name']}, you're successfully logged in to HeartLink!",
+                    data={"type": "welcome", "timestamp": welcome_data['timestamp']}
+                )
+                
+                # Remove from pending
+                del pending_notifications[current_user['id']]
+                print(f"✅ Delayed welcome notification sent successfully")
+        except Exception as e:
+            print(f"⚠️ Delayed welcome notification failed: {e}")
+        
         # Verify update
         updated_user = await db.fetchone(
             "SELECT fcm_token FROM users WHERE id = ?",

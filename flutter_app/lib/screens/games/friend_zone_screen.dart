@@ -6,6 +6,7 @@ import '../../services/auth_service.dart';
 import '../../utils/theme.dart';
 import '../../utils/api_constants.dart';
 import 'game_zone_screen.dart';
+import 'invite_friends_screen.dart';
 
 class FriendZoneScreen extends StatefulWidget {
   const FriendZoneScreen({super.key});
@@ -287,6 +288,26 @@ class _FriendZoneScreenState extends State<FriendZoneScreen> {
                           fontSize: 14,
                         ),
                       ),
+                      if (isAdmin && zone['current_players'] < 6)
+                        TextButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => InviteFriendsScreen(
+                                  zoneId: zone['id'],
+                                  zoneName: zone['zone_name'],
+                                ),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.person_add, size: 16),
+                          label: const Text('Invite Friends', style: TextStyle(fontSize: 12)),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppTheme.primaryColor,
+                            padding: EdgeInsets.zero,
+                          ),
+                        ),
                     ],
                   ),
                 ),

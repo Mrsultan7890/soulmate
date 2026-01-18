@@ -130,19 +130,55 @@ class GameService:
         player_index = int((angle / 360) * players_count)
         selected_player = game['players'][player_index]
         
-        # Update game state
+        # Update game state - now it's their turn to ask
         game['bottle_angle'] = angle
         game['current_turn'] = player_index
-        game['status'] = 'waiting_choice'
+        game['status'] = 'asking_question'
         
         return {
             'angle': angle,
             'selected_player': selected_player,
-            'truth_question': random.choice(self.truth_questions),
-            'dare_challenge': random.choice(self.dare_challenges)
+            'message': f"{selected_player['name']}, it's your turn to ask a question!"
         }
     
-    async def add_connection(self, zone_id: int, websocket):
+    async def ask_question(self, zone_id: int, questioner_id: int, question: str, question_type: str = 'text'):
+        """Player asks a custom question"""
+        if zone_id not in self.game_sessions:
+            return None
+        
+        game = self.game_sessions[zone_id]
+        
+        # Spin bottle again to select who answers
+        players_count = len(game['players'])
+        answer_angle = random.uniform(0, 360)
+        answerer_index = int((answer_angle / 360) * players_count)
+        
+        # Make sure answerer is not the same as questioner
+        attempts = 0
+        while answerer_index == game['current_turn'] and attempts < 10:
+            answer_angle = random.uniform(0, 360)
+            answerer_index = int((answer_angle / 360) * players_count)
+            attempts += 1
+        
+        answerer = game['players'][answerer_index]
+        questioner = game['players'][game['current_turn']]
+        
+        game['status'] = 'waiting_answer'
+        game['current_question'] = {
+            'question': question,
+            'type': question_type,
+            'questioner': questioner,
+            'answerer': answerer,
+            'answer_angle': answer_angle
+        }
+        
+        return {
+            'questioner': questioner,
+            'answerer': answerer,
+            'question': question,
+            'question_type': question_type,
+            'answer_angle': answer_angle
+        }
         """Add WebSocket connection"""
         if zone_id not in self.active_connections:
             self.active_connections[zone_id] = []

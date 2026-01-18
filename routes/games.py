@@ -111,7 +111,63 @@ async def get_zone_details(
         "is_admin": member['role'] == 'admin'
     }
 
-@router.post("/zone/{zone_id}/start-game")
+@router.post("/invite-user")
+async def invite_user_to_zone(
+    request: dict,
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """Invite user to Friend Zone"""
+    zone_id = request.get('zone_id')
+    invited_user_id = request.get('user_id')
+    
+    # Check if user is admin of zone
+    member = await db.fetchone("""
+        SELECT role FROM zone_members 
+        WHERE zone_id = ? AND user_id = ?
+    """, (zone_id, current_user['id']))
+    
+    if not member or member['role'] != 'admin':
+        raise HTTPException(403, "Only admin can invite users")
+    
+    # Check zone capacity
+    zone = await db.fetchone("""
+        SELECT current_players, max_players FROM friend_zones WHERE id = ?
+    """, (zone_id,))
+    
+    if zone['current_players'] >= zone['max_players']:
+        raise HTTPException(400, "Zone is full")
+    
+    # Send FCM invitation
+    try:
+        from services.fcm_notification_service import fcm_service
+        invited_user = await db.fetchone("""
+            SELECT fcm_token, name FROM users WHERE id = ?
+        """, (invited_user_id,))
+        
+        zone_info = await db.fetchone("""
+            SELECT zone_name FROM friend_zones WHERE id = ?
+        """, (zone_id,))
+        
+        if invited_user and invited_user['fcm_token']:
+            await fcm_service.send_notification(
+                fcm_token=invited_user['fcm_token'],
+                title="🎮 Friend Zone Invitation!",
+                body=f"{current_user['name']} invited you to join '{zone_info['zone_name']}' game zone!",
+                data={
+                    "type": "zone_invitation",
+                    "zone_id": str(zone_id),
+                    "zone_name": zone_info['zone_name'],
+                    "inviter_name": current_user['name']
+                }
+            )
+    except Exception as e:
+        print(f"Invitation notification failed: {e}")
+    
+    return {
+        "success": True,
+        "message": f"Invitation sent to {invited_user['name'] if invited_user else 'user'}!"
+    }
 async def start_game(
     zone_id: int,
     current_user: dict = Depends(get_current_user),
@@ -157,6 +213,35 @@ async def spin_bottle(
     
     return result
 
+@router.post("/zone/{zone_id}/ask-question")
+async def ask_question(
+    zone_id: int,
+    request: dict,
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """Ask a custom question"""
+    question = request.get('question', '').strip()
+    question_type = request.get('type', 'text')  # text or voice
+    
+    if not question:
+        raise HTTPException(400, "Question cannot be empty")
+    
+    result = await game_service.ask_question(
+        zone_id, current_user['id'], question, question_type
+    )
+    
+    if not result:
+        raise HTTPException(400, "Cannot ask question right now")
+    
+    # Broadcast question to all players
+    await game_service.broadcast_to_zone(zone_id, {
+        "type": "question_asked",
+        "result": result
+    })
+    
+    return result
+
 @router.websocket("/zone/{zone_id}/ws")
 async def websocket_endpoint(websocket: WebSocket, zone_id: int):
     """WebSocket connection for real-time game updates"""
@@ -169,12 +254,20 @@ async def websocket_endpoint(websocket: WebSocket, zone_id: int):
             message = json.loads(data)
             
             # Handle different message types
-            if message.get("type") == "choice_made":
-                # Broadcast player's choice
+            if message.get("type") == "chat_message":
+                # Broadcast chat message to all zone members
                 await game_service.broadcast_to_zone(zone_id, {
-                    "type": "choice_made",
-                    "choice": message.get("choice"),
-                    "player": message.get("player")
+                    "type": "chat_message",
+                    "message": message.get("message"),
+                    "sender": message.get("sender"),
+                    "timestamp": message.get("timestamp")
+                })
+            elif message.get("type") == "answer_given":
+                # Broadcast answer to question
+                await game_service.broadcast_to_zone(zone_id, {
+                    "type": "answer_given",
+                    "answer": message.get("answer"),
+                    "answerer": message.get("answerer")
                 })
             
     except WebSocketDisconnect:

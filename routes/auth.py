@@ -182,7 +182,15 @@ async def login(user_login: UserLogin, db = Depends(get_db)):
                 data={"type": "welcome", "timestamp": str(datetime.utcnow())}
             )
         else:
-            print("No FCM token found for user")
+            print("No FCM token found for user - will update from frontend")
+            # Update FCM token immediately after login response
+            from services.fcm_notification_service import fcm_service as global_fcm
+            # Store user info for delayed notification
+            global_fcm.pending_welcome_notifications = getattr(global_fcm, 'pending_welcome_notifications', {})
+            global_fcm.pending_welcome_notifications[user_dict['id']] = {
+                'name': user_dict['name'],
+                'timestamp': str(datetime.utcnow())
+            }
     except Exception as e:
         print(f"Welcome notification failed: {e}")
     

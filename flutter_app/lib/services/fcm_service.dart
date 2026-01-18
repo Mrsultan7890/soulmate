@@ -98,6 +98,12 @@ class FCMService {
       print('🎉 Welcome notification received!');
     }
     
+    // Handle zone invitation
+    if (message.data['type'] == 'zone_invitation') {
+      print('🎮 Zone invitation received!');
+      // Could show dialog or navigate to zone
+    }
+    
     if (message.notification != null) {
       await _showLocalNotification(
         message.notification!.title ?? 'HeartLink',
