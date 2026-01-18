@@ -5,7 +5,7 @@ import 'dart:convert';
 import '../../services/auth_service.dart';
 import '../../utils/api_constants.dart';
 import '../../utils/theme.dart';
-import '../profile/user_profile_view_screen.dart';
+import '../user/user_profile_view_screen.dart';
 import 'favorites_screen.dart';
 
 class FeedScreen extends StatefulWidget {
