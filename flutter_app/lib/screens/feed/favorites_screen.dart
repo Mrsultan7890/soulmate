@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import '../services/auth_service.dart';
-import '../utils/api_constants.dart';
-import '../utils/theme.dart';
+import '../../services/auth_service.dart';
+import '../../utils/api_constants.dart';
+import '../../utils/theme.dart';
 import 'feed_screen.dart';
 
 class FavoritesScreen extends StatefulWidget {

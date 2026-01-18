@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import '../services/auth_service.dart';
-import '../utils/api_constants.dart';
-import '../utils/theme.dart';
-import '../profile/user_profile_screen.dart';
+import '../../services/auth_service.dart';
+import '../../utils/api_constants.dart';
+import '../../utils/theme.dart';
+import '../profile/user_profile_view_screen.dart';
 import 'favorites_screen.dart';
 
 class FeedScreen extends StatefulWidget {
@@ -147,7 +147,7 @@ class _FeedScreenState extends State<FeedScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => UserProfileScreen(
+            builder: (context) => UserProfileViewScreen(
               userId: userData['id'],
               userData: userData,
             ),
